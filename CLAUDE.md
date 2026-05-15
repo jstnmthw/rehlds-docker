@@ -71,7 +71,8 @@ records the pinned set.
 2. **Renders env-driven config on every start** — `server.cfg` (template + a
    generated env-override block appended last so it wins), Metamod `plugins.ini`
    (toggles the YaPB / Reunion lines per `BOTS_ENABLED` / `REUNION_ENABLED`),
-   and `reunion.cfg` (only when Reunion is enabled).
+   `reunion.cfg` (only when Reunion is enabled), and the AMX Mod X
+   `users.ini` (rewrites a container-managed `OWNER` admin block — see below).
 3. Fixes ownership and `exec`s HLDS, dropping to the unprivileged `steam` user
    via `gosu`. HLDS becomes the container's main process (clean SIGTERM).
 
@@ -90,10 +91,19 @@ Config files fall into three categories — know which before editing:
 | `config/server.cfg`, `plugins.ini`, `reunion.cfg` | **Templates** — copied to `/opt/cs16/templates/`, rendered every start | Edit the `config/` template. The live `cstrike/` copy is overwritten. |
 | `config/amxx.cfg`, `config/yapb-overlay.cfg` | **Curated, baked** — `build-server.sh` copies them into the serverfiles at build time | Edit the `config/` source; rebuild to bake. Seeded once into the volume, then never overwritten. |
 | `cstrike/serverextra.cfg` | **Operator escape hatch** — seeded empty, `exec`'d last | Operator's own cvars; never overwritten. |
+| `cstrike/addons/amxmodx/configs/users.ini` | **Managed block** — vendored AMXX file; the entrypoint rewrites only an `OWNER`-marked block each start | Set `OWNER` in `.env` for the owner admin. Add other admins by hand in the live file, outside the managed block (they persist). |
 
-Runtime values (hostname, RCON, ports, bot quota/difficulty, Reunion) are all
-driven by `.env` (`.env.example` is the documented template) — no rebuild needed
-to change them.
+Runtime values (hostname, RCON, ports, bot quota/difficulty, Reunion, owner
+admin) are all driven by `.env` (`.env.example` is the documented template) — no
+rebuild needed to change them.
+
+The `OWNER` env var holds the server owner's SteamID. When set, the entrypoint
+bootstraps it into `users.ini` as a full AMX Mod X admin (flags
+`abcdefghijklmnopqrstu` — all commands + immunity, account flags `ce` =
+SteamID auth, no password). It rewrites only the block between its
+`; >>> OWNER admin` / `; <<< OWNER admin` markers, so hand-added admins
+elsewhere in the file survive. YaPB has no SteamID admin model, so `OWNER`
+does not touch it.
 
 ### YaPB bot config
 

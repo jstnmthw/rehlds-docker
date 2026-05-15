@@ -3,6 +3,16 @@
 All component versions are pinned for reproducible builds. Floating tags
 (`latest`, `master`, `continuous`) are deliberately not used.
 
+## [Unreleased]
+
+### Added
+
+- **`OWNER` env var** — set it to the server owner's SteamID and the entrypoint
+  bootstraps that SteamID into AMX Mod X as a full admin (all command flags +
+  immunity, SteamID auth, no password) on every start. It is written into a
+  container-managed marked block in `users.ini`; admins added by hand elsewhere
+  in the file are left untouched. Empty `OWNER` adds nothing. No rebuild needed.
+
 ## [1.0.0] — 2026-05-15
 
 Initial release: a Counter-Strike 1.6 dedicated server on the ReHLDS engine

@@ -5,7 +5,7 @@
 # Starts as root. It:
 #   1. seeds the /server volume from the baked-in server copy on first run,
 #   2. renders the env-driven config (server.cfg, Metamod plugins.ini,
-#      reunion.cfg) into the serverfiles,
+#      reunion.cfg, AMX Mod X users.ini) into the serverfiles,
 #   3. drops to the unprivileged "steam" user and execs HLDS.
 #
 # There is no update machinery: the ReHLDS stack was applied at build time.
@@ -123,6 +123,41 @@ render_reunion() {
   log "rendered cstrike/reunion.cfg"
 }
 
+# AMX Mod X users.ini — bootstrap the OWNER SteamID as a full admin.
+# users.ini is a seeded, operator-editable file. We rewrite only a marked block
+# in it on every start, so the OWNER tracks the env var while any other admins
+# the operator adds to the file persist untouched. Empty OWNER => no block.
+render_admins() {
+  local out="${GAMEDIR}/addons/amxmodx/configs/users.ini"
+  local begin="; >>> OWNER admin — managed by the container (OWNER env var) >>>"
+  local end="; <<< OWNER admin — managed by the container <<<"
+  mkdir -p "$(dirname "${out}")"
+  [[ -e "${out}" ]] || : > "${out}"
+
+  # Strip any previously-managed OWNER block (exact line match, no regex).
+  awk -v b="${begin}" -v e="${end}" '
+    $0 == b { drop = 1 }
+    !drop   { print }
+    $0 == e { drop = 0 }
+  ' "${out}" > "${out}.tmp" && mv "${out}.tmp" "${out}"
+
+  if [[ -z "${OWNER:-}" ]]; then
+    log "rendered users.ini — no OWNER set (env var empty)"
+    return 0
+  fi
+  if [[ "${OWNER}" != STEAM_* ]]; then
+    log "WARNING: OWNER='${OWNER}' does not look like a SteamID (STEAM_x:y:z)"
+  fi
+  {
+    echo "${begin}"
+    echo "; Full AMX Mod X admin (all command flags + immunity), SteamID auth."
+    echo "; To change the owner, edit OWNER in .env — do not edit this block."
+    echo "\"${OWNER}\" \"\" \"abcdefghijklmnopqrstu\" \"ce\""
+    echo "${end}"
+  } >> "${out}"
+  log "rendered users.ini — OWNER ${OWNER} bootstrapped as full admin"
+}
+
 # serverextra.cfg — operator's own cvars; seeded once, never overwritten.
 seed_serverextra() {
   local f="${GAMEDIR}/serverextra.cfg"
@@ -138,6 +173,7 @@ EOF
 render_server_cfg
 render_plugins_ini
 render_reunion
+render_admins
 seed_serverextra
 
 # --- 3. fix ownership/perms and hand off to HLDS ----------------------------

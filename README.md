@@ -95,6 +95,7 @@ rebuild needed. See [`.env.example`](.env.example) for the full list.
 | `SERVER_NAME` | name in the server browser | `ReHLDS Counter-Strike 1.6` |
 | `RCON_PASSWORD` | remote console password — **set this** | `changeme-rcon-pass` |
 | `SERVER_PASSWORD` | join password (empty = public) | *(empty)* |
+| `OWNER` | SteamID bootstrapped as a full AMX Mod X admin | *(empty)* |
 | `SERVER_PORT` | game/query UDP port | `27015` |
 | `MAX_PLAYERS` | player slots | `16` |
 | `DEFAULT_MAP` | boot map | `de_dust2` |
@@ -116,7 +117,11 @@ After editing `.env`: `docker compose up -d` to recreate with the new settings.
   performance-tuned bot defaults, `exec`'d after YaPB's stock `yapb.cfg` (so it wins)
   on every map, never overwritten. Edit it to tune bots; see `yapb.cfg` for the
   full cvar list.
-- `addons/amxmodx/configs/users.ini` etc. — seeded from the image, then yours
+- `addons/amxmodx/configs/users.ini` — the AMX Mod X admin list. Seeded from
+  the image, then yours to edit. If `OWNER` is set in `.env`, the container
+  also rewrites a marked owner block in it on every start (full admin by
+  SteamID); admins you add by hand outside that block persist.
+- other `addons/amxmodx/configs/*` files — seeded from the image, then yours
   to edit; they live in the volume and persist.
 
 ### ReHLDS flood protection
@@ -149,6 +154,15 @@ docker compose exec csserver rcon "amx_version"
 `rcon` is a small client baked into the image; it reads `RCON_PASSWORD` from
 the environment. RCON also works from any external RCON tool against your
 public IP.
+
+### In-game admin
+
+Set `OWNER` in `.env` to your SteamID to get full AMX Mod X admin in-game —
+all command flags plus immunity, authenticated by SteamID with no admin
+password. After `docker compose up -d`, verify with `amx_who` or by opening
+`amxmodmenu` in the in-game console. Add further admins by editing
+`cstrike/addons/amxmodx/configs/users.ini` directly (outside the
+container-managed `OWNER` block, which is regenerated each start).
 
 ## Updating
 
