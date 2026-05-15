@@ -1,0 +1,63 @@
+# =============================================================================
+#  ReHLDS Counter-Strike 1.6 server  —  docker compose
+# =============================================================================
+#  Quick start:
+#     cp .env.example .env      # then edit .env (set RCON_PASSWORD!)
+#     docker compose up -d --build
+#
+#  To run a SECOND instance, copy this whole directory, give it its own .env
+#  with a different SERVER_PORT / CONTAINER_NAME / DATA_DIR, and `up -d` it.
+# =============================================================================
+
+services:
+  csserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # HLDS SteamCMD branch — keep steam_legacy (required for ReHLDS).
+        STEAM_BRANCH: "steam_legacy"
+        # Flip to "false" only if GitHub is unreachable at build time;
+        # SHA256 verification always runs regardless.
+        GPG_VERIFY: "true"
+    image: rehlds-csserver:local
+    container_name: ${CONTAINER_NAME:-rehlds-csserver}
+
+    # Host networking is the reliable choice for GoldSrc master-server
+    # registration. The server binds these UDP ports directly on the host:
+    #   UDP ${SERVER_PORT}  game traffic + A2S queries   (port-forward this)
+    #   UDP ${CLIENT_PORT}  client/RCON channel
+    #   UDP 26900           VAC
+    network_mode: host
+
+    # All tunables live in .env — no rebuild needed to change them.
+    env_file:
+      - .env
+
+    # The serverfiles volume. Seeded from the image's baked-in copy on first
+    # run; persists maps, logs, admin lists and bans. Delete it to reset.
+    volumes:
+      - ${DATA_DIR:-./serverdata}:/server
+
+    restart: unless-stopped
+    init: true                  # reap zombies (HLDS is the main process)
+    stop_grace_period: 30s
+
+    # A2S-query healthcheck: confirms the server actually answers Steam
+    # queries (the image also defines this; restated here for visibility).
+    healthcheck:
+      test: ["CMD", "/opt/cs16/healthcheck.sh"]
+      interval: 60s
+      timeout: 15s
+      start_period: 90s
+      retries: 3
+
+    # ---------------------------------------------------------------------
+    # ALTERNATIVE to host networking: explicit port mappings. Less reliable
+    # for GoldSrc master-server listing. Comment out `network_mode: host`
+    # above before enabling this.
+    # ---------------------------------------------------------------------
+    # ports:
+    #   - "${SERVER_PORT:-27015}:${SERVER_PORT:-27015}/udp"
+    #   - "${CLIENT_PORT:-27005}:${CLIENT_PORT:-27005}/udp"
+    #   - "26900:26900/udp"

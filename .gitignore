@@ -1,0 +1,42 @@
+# =============================================================================
+#  .gitignore — ReHLDS Counter-Strike 1.6 server
+# =============================================================================
+#  Tracked: Dockerfile, docker-compose.yml, scripts/, config/, docs and
+#  .env.example. Ignored: secrets, runtime server data, editor/OS noise.
+
+# --- Secrets / local config --------------------------------------------------
+# The real .env (RCON password, server name) is copied from .env.example and
+# edited locally. .env.example IS tracked; the real .env must not be.
+.env
+.env.local
+.env.*.local
+
+# --- Runtime server data -----------------------------------------------------
+# The serverfiles volume (DATA_DIR, default ./serverdata): the whole CS 1.6
+# install plus maps, logs, bans and the generated Reunion salt — many GB,
+# constantly mutated, and fully regenerable from the image. Source config
+# lives in config/ instead. Mirrors the .dockerignore exclusions.
+serverdata/
+data/
+*-data/
+
+# --- Python (scripts/clear-execstack.py) -------------------------------------
+__pycache__/
+*.py[cod]
+
+# --- Editors / IDEs ----------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- OS cruft ----------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Misc --------------------------------------------------------------------
+*.log
+*.bak
+*.orig

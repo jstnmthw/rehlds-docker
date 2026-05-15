@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+#
+# rcon — minimal GoldSrc RCON client for the ReHLDS CS 1.6 server.
+#
+# Usage (inside the container):  rcon "<command>"
+# e.g.   docker compose exec csserver rcon "meta list"
+#        docker compose exec csserver rcon "amx_version"
+#
+# Reads RCON_PASSWORD and SERVER_PORT from the environment and talks to the
+# server on 127.0.0.1.
+#
+import os
+import re
+import socket
+import sys
+
+
+def main() -> int:
+    if len(sys.argv) < 2 or not sys.argv[1].strip():
+        print('usage: rcon "<command>"', file=sys.stderr)
+        return 2
+
+    command = " ".join(sys.argv[1:])
+    host = os.environ.get("RCON_HOST", "127.0.0.1")
+    port = int(os.environ.get("SERVER_PORT", "27015"))
+    password = os.environ.get("RCON_PASSWORD", "")
+    if not password:
+        print("rcon: RCON_PASSWORD is not set", file=sys.stderr)
+        return 1
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(5)
+    try:
+        sock.connect((host, port))
+
+        # 1. request a challenge
+        sock.send(b"\xff\xff\xff\xffchallenge rcon\n")
+        reply = sock.recv(4096)
+        match = re.search(rb"challenge rcon (-?\d+)", reply)
+        if not match:
+            print(f"rcon: no challenge from {host}:{port} (is the server up?)",
+                  file=sys.stderr)
+            return 1
+        challenge = match.group(1).decode()
+
+        # 2. send the command
+        packet = (b"\xff\xff\xff\xffrcon " + challenge.encode()
+                  + b' "' + password.encode() + b'" ' + command.encode())
+        sock.send(packet)
+
+        # 3. collect the (possibly multi-packet) response
+        out = b""
+        while True:
+            try:
+                chunk = sock.recv(4096)
+            except socket.timeout:
+                break
+            if chunk.startswith(b"\xff\xff\xff\xff"):
+                chunk = chunk[5:]  # drop the 4-byte header + 1 type byte
+            out += chunk
+    finally:
+        sock.close()
+
+    text = out.decode("utf-8", "replace").rstrip("\x00").rstrip()
+    if "Bad rcon_password" in text:
+        print("rcon: server rejected the password", file=sys.stderr)
+        print(text)
+        return 1
+    print(text)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

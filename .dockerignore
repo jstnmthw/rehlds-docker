@@ -1,0 +1,27 @@
+# Keep the build context small and free of secrets / runtime state.
+# Only Dockerfile + scripts/ + config/ are needed to build the image.
+
+# Secrets and local config
+.env
+.env.*
+
+# Runtime data (serverfiles, logs, runtime state) — can be many GB
+serverdata/
+data/
+*-data/
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Documentation — not needed inside the image
+*.md
+START.md
+
+# Editor / OS noise
+.vscode/
+.idea/
+*.swp
+.DS_Store
+__pycache__/
