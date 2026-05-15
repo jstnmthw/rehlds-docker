@@ -64,6 +64,7 @@ render_server_cfg() {
     echo "sv_contact \"${SV_CONTACT:-}\""
     echo "sv_lan ${SV_LAN:-0}"
     echo "sv_region ${SV_REGION:-255}"
+    [[ -n "${SV_DOWNLOADURL:-}" ]] && echo "sv_downloadurl \"${SV_DOWNLOADURL}\""
     if [[ "${BOTS_ENABLED:-true}" == "true" ]]; then
       echo "// YaPB bots enabled"
       echo "yb_quota ${BOT_QUOTA:-6}"

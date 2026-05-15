@@ -11,6 +11,13 @@
 .env.local
 .env.*.local
 
+# --- Host-specific Compose overrides -----------------------------------------
+# docker-compose.override.yml is auto-merged by Compose; it and the fastdl/
+# nginx config are host-specific and copied to the prod box by hand — never
+# tracked, so the committed docker-compose.yml stays network-agnostic.
+docker-compose.override.yml
+fastdl/
+
 # --- Runtime server data -----------------------------------------------------
 # The serverfiles volume (DATA_DIR, default ./serverdata): the whole CS 1.6
 # install plus maps, logs, bans and the generated Reunion salt — many GB,
