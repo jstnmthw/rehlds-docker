@@ -79,8 +79,8 @@ render_server_cfg() {
       echo "// YaPB bots disabled (BOTS_ENABLED=false)"
     fi
     echo
-    echo "// User overrides — edit cstrike/serverextra.cfg (persisted, exec'd last)."
-    echo "exec serverextra.cfg"
+    echo "// User overrides — edit cstrike/server-custom.cfg (persisted, exec'd last)."
+    echo "exec server-custom.cfg"
   } >> "${out}"
   log "rendered cstrike/server.cfg"
 }
@@ -162,23 +162,48 @@ render_admins() {
   log "rendered users.ini — OWNER ${OWNER} bootstrapped as full admin"
 }
 
-# serverextra.cfg — operator's own cvars; seeded once, never overwritten.
-seed_serverextra() {
-  local f="${GAMEDIR}/serverextra.cfg"
+# server-custom.cfg — operator's own server cvars; seeded once, never overwritten.
+seed_server_custom() {
+  local f="${GAMEDIR}/server-custom.cfg"
+  local legacy="${GAMEDIR}/serverextra.cfg"
+  # Migrate the pre-rename file if an older volume still has serverextra.cfg,
+  # so operator cvars are not orphaned across the rename.
+  if [[ -e "${legacy}" && ! -e "${f}" ]]; then
+    mv "${legacy}" "${f}"
+    log "migrated cstrike/serverextra.cfg -> server-custom.cfg"
+    return 0
+  fi
   [[ -e "${f}" ]] && return 0
   cat > "${f}" <<'EOF'
-// serverextra.cfg — your own custom cvars go here.
+// server-custom.cfg — your own custom server cvars go here.
 // This file is exec'd last (after server.cfg) and is never overwritten by the
 // container, so values set here win and persist across updates and restarts.
 EOF
-  log "seeded cstrike/serverextra.cfg"
+  log "seeded cstrike/server-custom.cfg"
+}
+
+# amxx-custom.cfg — operator's own AMX Mod X cvars; seeded once, never overwritten.
+seed_amxx_custom() {
+  local f="${GAMEDIR}/addons/amxmodx/configs/amxx-custom.cfg"
+  [[ -e "${f}" ]] && return 0
+  mkdir -p "$(dirname "${f}")"
+  cat > "${f}" <<'EOF'
+// amxx-custom.cfg — your own AMX Mod X cvar overrides go here.
+// amxx.cfg exec's this file last, so values set here win over the curated
+// defaults, and it is never overwritten by the container — your edits persist
+// across updates and restarts. Example — change the scrolling/info messages:
+//   amx_scrollmsg "My server" 600
+//   amx_imessage  "Welcome to %hostname%" "0 255 0"
+EOF
+  log "seeded cstrike/addons/amxmodx/configs/amxx-custom.cfg"
 }
 
 render_server_cfg
 render_plugins_ini
 render_reunion
 render_admins
-seed_serverextra
+seed_server_custom
+seed_amxx_custom
 
 # --- 3. fix ownership/perms and hand off to HLDS ----------------------------
 chown -R "${RUN_USER}:${RUN_USER}" "${SERVER}"

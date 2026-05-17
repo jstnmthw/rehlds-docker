@@ -111,8 +111,9 @@ After editing `.env`: `docker compose up -d` to recreate with the new settings.
 
 - `server.cfg` — regenerated every start from `config/server.cfg` + your
   `.env`. Do **not** edit it directly; it is overwritten.
-- `serverextra.cfg` — **your** escape hatch. Seeded empty, `exec`'d last (so it
-  wins), never overwritten. Put any custom cvars here.
+- `server-custom.cfg` — **your** server escape hatch. Seeded empty, `exec`'d
+  last (so it wins), never overwritten. Put any custom server cvars here.
+  (An older `serverextra.cfg` is auto-renamed to this on first start.)
 - `addons/yapb/conf/yapb-overlay.cfg` — YaPB tuning overlay. Seeded with
   performance-tuned bot defaults, `exec`'d after YaPB's stock `yapb.cfg` (so it wins)
   on every map, never overwritten. Edit it to tune bots; see `yapb.cfg` for the
@@ -121,6 +122,10 @@ After editing `.env`: `docker compose up -d` to recreate with the new settings.
   the image, then yours to edit. If `OWNER` is set in `.env`, the container
   also rewrites a marked owner block in it on every start (full admin by
   SteamID); admins you add by hand outside that block persist.
+- `addons/amxmodx/configs/amxx-custom.cfg` — **your** AMX Mod X escape hatch.
+  Seeded empty, `exec`'d last by `amxx.cfg` (so it wins), never overwritten.
+  Put AMX Mod X cvar overrides (scrolling messages, vote ratios, ...) here
+  instead of editing `amxx.cfg`.
 - other `addons/amxmodx/configs/*` files — seeded from the image, then yours
   to edit; they live in the volume and persist.
 
@@ -137,7 +142,7 @@ sv_rehlds_maxclients_from_single_ip 5
 ```
 
 If legitimate players are being rate-limited, raise the values in
-`cstrike/serverextra.cfg` (exec'd last, so it wins) and watch the console log.
+`cstrike/server-custom.cfg` (exec'd last, so it wins) and watch the console log.
 
 ## Server admin
 

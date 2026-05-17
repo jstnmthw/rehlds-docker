@@ -90,7 +90,7 @@ Config files fall into three categories — know which before editing:
 |---|---|---|
 | `config/server.cfg`, `plugins.ini`, `reunion.cfg` | **Templates** — copied to `/opt/cs16/templates/`, rendered every start | Edit the `config/` template. The live `cstrike/` copy is overwritten. |
 | `config/amxx.cfg`, `config/yapb-overlay.cfg` | **Curated, baked** — `build-server.sh` copies them into the serverfiles at build time | Edit the `config/` source; rebuild to bake. Seeded once into the volume, then never overwritten. |
-| `cstrike/serverextra.cfg` | **Operator escape hatch** — seeded empty, `exec`'d last | Operator's own cvars; never overwritten. |
+| `cstrike/server-custom.cfg`, `cstrike/addons/amxmodx/configs/amxx-custom.cfg` | **Operator escape hatches** — seeded empty by the entrypoint, `exec`'d last (`server.cfg` and `amxx.cfg` respectively `exec` them) | Operator's own cvars (server / AMX Mod X). Never overwritten. |
 | `cstrike/addons/amxmodx/configs/users.ini` | **Managed block** — vendored AMXX file; the entrypoint rewrites only an `OWNER`-marked block each start | Set `OWNER` in `.env` for the owner admin. Add other admins by hand in the live file, outside the managed block (they persist). |
 
 Runtime values (hostname, RCON, ports, bot quota/difficulty, Reunion, owner
