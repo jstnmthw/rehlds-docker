@@ -19,6 +19,14 @@ All component versions are pinned for reproducible builds. Floating tags
 
 ### Changed
 
+- **AMX Mod X upgraded `1.9.0.5303` → `1.10.0.5476`** — both the base and
+  cstrike Linux assets are bumped together (they share the `AMXX_VERSION` /
+  `AMXX_BUILD` ARGs) and re-pinned by SHA256:
+  - base: `cd99e956b02b4818324f3ed5a624d7cea8f00ef6593974bb97d912ae7591ec73`
+  - cstrike: `4af2ce169be4ffdd9a33be89d25f18967395b72433333aa900549d5bf0b4d508`
+
+  `1.10.0.5476` is the latest stable AMX Mod X build (resolved 2026-05-31).
+  Metamod-R and ReAPI are unchanged — both are compatible with AMX Mod X 1.10.
 - **`serverextra.cfg` renamed to `server-custom.cfg`** — a consistent
   `*-custom.cfg` naming for operator escape-hatch files (alongside the new
   `amxx-custom.cfg`). The entrypoint auto-migrates an existing

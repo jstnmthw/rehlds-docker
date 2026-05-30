@@ -205,11 +205,19 @@ else
 fi
 note "patched liblist.gam: gamedll_linux -> ${MM}"
 
-# --- enable ReAPI in the AMX Mod X module list ------------------------------
+# --- enable required AMX Mod X modules --------------------------------------
+# Most modules (fun, engine, fakemeta, hamsandwich, …) auto-load only when a
+# loaded plugin calls their natives. `cstrike` is the CS-specific module, but
+# no stock AMXX plugin uses it, so it never auto-loads despite being shipped —
+# enable it explicitly. `reapi` is third-party and is likewise not auto-listed.
 MODULES_INI="${SF}/cstrike/addons/amxmodx/configs/modules.ini"
-if [[ -f "${MODULES_INI}" ]] && ! grep -Eqx '[[:space:]]*reapi[[:space:]]*' "${MODULES_INI}"; then
-  printf 'reapi\n' >> "${MODULES_INI}"
-  note "enabled the reapi module in modules.ini"
+if [[ -f "${MODULES_INI}" ]]; then
+  for mod in cstrike reapi; do
+    if ! grep -Eqx "[[:space:]]*${mod}[[:space:]]*" "${MODULES_INI}"; then
+      printf '%s\n' "${mod}" >> "${MODULES_INI}"
+      note "enabled the ${mod} module in modules.ini"
+    fi
+  done
 fi
 
 # --- ensure the engine binaries are executable ------------------------------

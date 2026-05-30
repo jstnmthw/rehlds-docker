@@ -227,6 +227,13 @@ cd "${SERVER}"
 # hlds_run -norestart exec()s hlds_linux directly, so HLDS becomes the
 # container's main process and receives SIGTERM cleanly on `docker stop`.
 # Docker's restart policy replaces hlds_run's auto-restart loop.
+#
+# +localinfo mm_clientmeta yes re-enables Metamod's client-facing commands
+# ('meta list' / 'meta version' typed in a connected player's console). The
+# vendored Metamod-R config.ini ships with `clientmeta no`, so without this a
+# connected client gets "Unknown command". Set as a localinfo override (not a
+# config.ini edit) so it survives Metamod-R version bumps, which replace
+# config.ini wholesale. Does not affect the server-console / rcon `meta` path.
 exec gosu "${RUN_USER}" ./hlds_run \
   -norestart \
   -game cstrike \
@@ -237,4 +244,5 @@ exec gosu "${RUN_USER}" ./hlds_run \
   +map "${MAP}" \
   +servercfgfile server.cfg \
   -maxplayers "${MAXPLAYERS}" \
+  +localinfo mm_clientmeta yes \
   ${EXTRA}
