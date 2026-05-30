@@ -12,10 +12,6 @@ All component versions are pinned for reproducible builds. Floating tags
   immunity, SteamID auth, no password) on every start. It is written into a
   container-managed marked block in `users.ini`; admins added by hand elsewhere
   in the file are left untouched. Empty `OWNER` adds nothing. No rebuild needed.
-- **`amxx-custom.cfg`** — a seeded-empty AMX Mod X escape-hatch file at
-  `cstrike/addons/amxmodx/configs/amxx-custom.cfg`. `amxx.cfg` `exec`s it last,
-  so operator cvar overrides win over the curated defaults and survive updates
-  and restarts. Mirrors the `server-custom.cfg` pattern for AMX Mod X.
 
 ### Changed
 
@@ -28,10 +24,17 @@ All component versions are pinned for reproducible builds. Floating tags
   `1.10.0.5476` is the latest stable AMX Mod X build (resolved 2026-05-31).
   Metamod-R and ReAPI are unchanged — both are compatible with AMX Mod X 1.10.
 - **`serverextra.cfg` renamed to `server-custom.cfg`** — a consistent
-  `*-custom.cfg` naming for operator escape-hatch files (alongside the new
-  `amxx-custom.cfg`). The entrypoint auto-migrates an existing
-  `serverextra.cfg` to the new name on first start after the upgrade, so
-  operator cvars are preserved.
+  `*-custom.cfg` naming for the operator escape-hatch file. The entrypoint
+  auto-migrates an existing `serverextra.cfg` to the new name on first start
+  after the upgrade, so operator cvars are preserved.
+
+### Removed
+
+- **Curated `amxx.cfg` dropped** — the build no longer overwrites AMX Mod X's
+  stock `amxx.cfg` with a curated copy, and the entrypoint no longer seeds an
+  `amxx-custom.cfg` escape hatch. AMX Mod X now ships its own stock `amxx.cfg`,
+  seeded into the volume on first run and editable directly — adjust AMX Mod X
+  settings there. (`server-custom.cfg` remains for server cvars.)
 
 ## [1.0.0] — 2026-05-15
 

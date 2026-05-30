@@ -122,12 +122,10 @@ After editing `.env`: `docker compose up -d` to recreate with the new settings.
   the image, then yours to edit. If `OWNER` is set in `.env`, the container
   also rewrites a marked owner block in it on every start (full admin by
   SteamID); admins you add by hand outside that block persist.
-- `addons/amxmodx/configs/amxx-custom.cfg` — **your** AMX Mod X escape hatch.
-  Seeded empty, `exec`'d last by `amxx.cfg` (so it wins), never overwritten.
-  Put AMX Mod X cvar overrides (scrolling messages, vote ratios, ...) here
-  instead of editing `amxx.cfg`.
-- other `addons/amxmodx/configs/*` files — seeded from the image, then yours
-  to edit; they live in the volume and persist.
+- `addons/amxmodx/configs/amxx.cfg` and the other `addons/amxmodx/configs/*`
+  files — AMX Mod X's stock configs, seeded from the image, then yours to edit.
+  They live in the volume and persist; edit `amxx.cfg` directly to tune AMX Mod X
+  (scrolling messages, vote ratios, ...).
 
 ### ReHLDS flood protection
 

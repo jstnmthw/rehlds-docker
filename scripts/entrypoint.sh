@@ -182,28 +182,11 @@ EOF
   log "seeded cstrike/server-custom.cfg"
 }
 
-# amxx-custom.cfg — operator's own AMX Mod X cvars; seeded once, never overwritten.
-seed_amxx_custom() {
-  local f="${GAMEDIR}/addons/amxmodx/configs/amxx-custom.cfg"
-  [[ -e "${f}" ]] && return 0
-  mkdir -p "$(dirname "${f}")"
-  cat > "${f}" <<'EOF'
-// amxx-custom.cfg — your own AMX Mod X cvar overrides go here.
-// amxx.cfg exec's this file last, so values set here win over the curated
-// defaults, and it is never overwritten by the container — your edits persist
-// across updates and restarts. Example — change the scrolling/info messages:
-//   amx_scrollmsg "My server" 600
-//   amx_imessage  "Welcome to %hostname%" "0 255 0"
-EOF
-  log "seeded cstrike/addons/amxmodx/configs/amxx-custom.cfg"
-}
-
 render_server_cfg
 render_plugins_ini
 render_reunion
 render_admins
 seed_server_custom
-seed_amxx_custom
 
 # --- 3. fix ownership/perms and hand off to HLDS ----------------------------
 chown -R "${RUN_USER}:${RUN_USER}" "${SERVER}"

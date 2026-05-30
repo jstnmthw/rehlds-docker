@@ -181,9 +181,6 @@ unzip -q "${DL}/reunion.zip" -d "${TMP}"
 mkdir -p "${SF}/cstrike/addons/reunion"
 cp -a "${TMP}"/bin/Linux/reunion_mm_i386.so "${SF}"/cstrike/addons/reunion/
 
-# Curated AMX Mod X core config.
-cp -f "${CURATED}/amxx.cfg" "${SF}/cstrike/addons/amxmodx/configs/amxx.cfg"
-
 # Curated YaPB performance/behaviour overlay, hooked into the stock yapb.cfg.
 # yapb.cfg ships inside the YaPB archive and is replaced on every version bump,
 # so the tuning lives in a separate file and yapb.cfg just exec's it. YaPB
