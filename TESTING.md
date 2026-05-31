@@ -98,8 +98,9 @@ docker compose exec csserver cat /server/cstrike/persist-check.txt   # -> test (
 ```
 
 On recreate the volume persists, so the server is **not** re-seeded. To get a
-clean reset: `docker compose down`, delete `DATA_DIR`, `docker compose up -d` —
-the logs then show `first run — seeding` again.
+clean reset: `docker compose down`, delete the server's volume dir
+(`./serverdata/default`), `docker compose up -d` — the logs then show
+`first run — seeding` again.
 
 ---
 
@@ -137,6 +138,70 @@ docker compose exec csserver rcon "meta list"       # shows Reunion
 
 ---
 
+## 8. YaPB config: baked perf, stock bot tuning
+
+**Purpose:** our performance cvars are patched into `yapb.cfg` at build; bot
+count/difficulty are left at YaPB defaults (not in `.env`); both live in
+`yapb.cfg` and survive map changes. There is no `yapb-overlay.cfg`.
+
+```bash
+# server.cfg never sets yb_* — bot tuning is not env-driven:
+docker compose exec csserver grep -c yb_quota /server/cstrike/server.cfg   # -> 0
+
+# no overlay file, and yapb.cfg has no overlay exec hook:
+docker compose exec csserver sh -c \
+  'ls /server/cstrike/addons/yapb/conf/yapb-overlay.cfg 2>&1'             # -> No such file
+docker compose exec csserver grep -c yapb-overlay /server/cstrike/addons/yapb/conf/yapb.cfg  # -> 0
+
+# our perf cvars are baked into yapb.cfg:
+docker compose exec csserver grep -E '^yb_think_fps' \
+  /server/cstrike/addons/yapb/conf/yapb.cfg            # -> yb_think_fps "60.0"
+
+# bot tuning is at YaPB stock defaults:
+docker compose exec csserver grep -E '^yb_quota ' \
+  /server/cstrike/addons/yapb/conf/yapb.cfg            # -> yb_quota "9"
+
+# edit it live in yapb.cfg and reload the map; the new quota applies (no restart):
+docker compose exec csserver sh -c \
+  'sed -i "s/^yb_quota .*/yb_quota \"4\"/" /server/cstrike/addons/yapb/conf/yapb.cfg'
+docker compose exec csserver rcon "changelevel de_dust2"
+docker compose exec csserver rcon "yb_quota"          # -> 4
+```
+
+---
+
+## 9. Multi-server fleet (optional)
+
+**Purpose:** two servers run from the **one** built image, each fully independent.
+
+**Preconditions:** image built (`docker compose build`); two env files with
+**distinct** `SERVER_PORT` / `CLIENT_PORT`.
+
+```bash
+cp cstrike-01.env.example cstrike-01.env   # set RCON_PASSWORD; ports 27015/27005
+cp cstrike-02.env.example cstrike-02.env   # set RCON_PASSWORD; ports 27016/27006
+docker compose -f docker-compose.fleet.example.yml up -d
+docker compose -f docker-compose.fleet.example.yml ps        # both Up
+```
+
+**Expect:**
+- each server seeds its **own** volume on first start (`serverdata/cstrike-01`,
+  `serverdata/cstrike-02`) — no shared state;
+- each answers A2S on its own port:
+  ```bash
+  docker compose -f docker-compose.fleet.example.yml exec cstrike-01 /opt/cs16/healthcheck.sh
+  docker compose -f docker-compose.fleet.example.yml exec cstrike-02 /opt/cs16/healthcheck.sh
+  ```
+- independent admin/state: set a different `OWNER` in each env file and confirm
+  each server's `users.ini` carries its own owner block;
+- **both** appear in the Steam Internet browser. If only one lists, check for a
+  UDP 26900 (VAC/Steam port) clash — see the open note at the bottom of
+  `docker-compose.fleet.example.yml`.
+- clean shutdown per service: `docker compose -f docker-compose.fleet.example.yml stop cstrike-02`
+  stops only #2; #1 keeps running.
+
+---
+
 ## Done criteria checklist
 
 - [ ] Image builds cleanly; SteamCMD install verified complete; SHA256 + the
@@ -147,3 +212,8 @@ docker compose exec csserver rcon "meta list"       # shows Reunion
 - [ ] Server appears in Steam's Internet browser and is joinable (Test 4)
 - [ ] Server survives `restart` and `down`/`up`; the volume persists (Test 5)
 - [ ] YaPB bots present iff `BOTS_ENABLED=true` (Test 6)
+- [ ] Our perf cvars are baked into `yapb.cfg` (`yb_think_fps "60.0"`); bot
+      count/difficulty are at YaPB stock defaults, not in `server.cfg`; a live
+      `yapb.cfg` edit applies on the next changelevel (Test 8)
+- [ ] Fleet: two servers run from one image, each with its own volume/ports, both
+      list and answer A2S (Test 9)

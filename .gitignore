@@ -5,9 +5,13 @@
 #  .env.example. Ignored: secrets, runtime server data, editor/OS noise.
 
 # --- Secrets / local config --------------------------------------------------
-# The real .env (RCON password, server name) is copied from .env.example and
-# edited locally. .env.example IS tracked; the real .env must not be.
-.env
+# Real env files (RCON passwords, server names) are copied from the *.env.example
+# templates and edited locally. The templates ARE tracked; the real env files are
+# not — this covers .env and per-server fleet files like cstrike-01.env. The
+# `*.env` glob does not match `*.env.example`, so the templates stay tracked; the
+# explicit negation makes that intent unmistakable.
+*.env
+!*.env.example
 .env.local
 .env.*.local
 
@@ -19,10 +23,10 @@ docker-compose.override.yml
 fastdl/
 
 # --- Runtime server data -----------------------------------------------------
-# The serverfiles volume (DATA_DIR, default ./serverdata): the whole CS 1.6
-# install plus maps, logs, bans and the generated Reunion salt — many GB,
-# constantly mutated, and fully regenerable from the image. Source config
-# lives in config/ instead. Mirrors the .dockerignore exclusions.
+# The serverfiles volumes (./serverdata/<name>, e.g. ./serverdata/default): the
+# whole CS 1.6 install plus maps, logs, bans and the generated Reunion salt —
+# many GB, constantly mutated, and fully regenerable from the image. Source
+# config lives in config/ instead. Mirrors the .dockerignore exclusions.
 serverdata/
 data/
 *-data/

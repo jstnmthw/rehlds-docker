@@ -181,16 +181,35 @@ unzip -q "${DL}/reunion.zip" -d "${TMP}"
 mkdir -p "${SF}/cstrike/addons/reunion"
 cp -a "${TMP}"/bin/Linux/reunion_mm_i386.so "${SF}"/cstrike/addons/reunion/
 
-# Curated YaPB performance/behaviour overlay, hooked into the stock yapb.cfg.
-# yapb.cfg ships inside the YaPB archive and is replaced on every version bump,
-# so the tuning lives in a separate file and yapb.cfg just exec's it. YaPB
-# re-execs yapb.cfg on every changelevel, so the overlay re-applies each map.
-YAPB_CONF="${SF}/cstrike/addons/yapb/conf"
-cp -f "${CURATED}/yapb-overlay.cfg" "${YAPB_CONF}/yapb-overlay.cfg"
-if ! grep -q 'yapb-overlay.cfg' "${YAPB_CONF}/yapb.cfg"; then
-  printf '\nexec addons/yapb/conf/yapb-overlay.cfg\n' >> "${YAPB_CONF}/yapb.cfg"
-  note "hooked yapb-overlay.cfg into yapb.cfg"
-fi
+# --- tune YaPB performance / behaviour cvars in place -----------------------
+# yapb.cfg ships inside the YaPB archive and is replaced wholesale on every
+# version bump, so we re-apply our handful of perf/behaviour values directly
+# onto the freshly-extracted stock file here — the same in-place-patch approach
+# used for liblist.gam and modules.ini below. Because the values live in
+# yapb.cfg itself (which YaPB re-execs on every changelevel) they survive map
+# changes with no runtime overlay. Bot *tuning* — yb_quota / yb_quota_mode /
+# yb_difficulty / yb_autovacate — is deliberately left at YaPB's stock defaults
+# for the operator to set by editing the live yapb.cfg in their volume.
+YAPB_CFG="${SF}/cstrike/addons/yapb/conf/yapb.cfg"
+yapb_set() {  # cvar value — replace an existing cvar's value in yapb.cfg
+  local cvar="$1" value="$2"
+  grep -Eq "^[[:space:]]*${cvar}[[:space:]]" "${YAPB_CFG}" || {
+    echo "FATAL: YaPB cvar '${cvar}' not found in stock yapb.cfg — upstream renamed/removed it?" >&2
+    exit 1
+  }
+  sed -i -E "s#^[[:space:]]*${cvar}[[:space:]].*#${cvar} \"${value}\"#" "${YAPB_CFG}"
+}
+# AI think rate (stock 26.0): smoother aim/tracking without hitting the 90 cap.
+yapb_set yb_think_fps               60.0
+# Floyd-Warshall pathfinding memory cap, MB (stock 6): keep big maps on the fast
+# precomputed path instead of falling back to slower per-query Dijkstra.
+yapb_set yb_path_floyd_memory_limit 32
+# Post-smooth A* paths (stock 0): de-zig-zag bot routes, trivial CPU cost.
+yapb_set yb_path_astar_post_smooth  1
+# One-time map-graph analyzer FPS (stock 30.0): finish first-load analysis
+# faster; no effect on normal gameplay.
+yapb_set yb_graph_analyze_fps       60.0
+note "tuned YaPB performance cvars in yapb.cfg (bot count/difficulty left at YaPB defaults)"
 
 # --- patch liblist.gam so HLDS loads Metamod --------------------------------
 LIBLIST="${SF}/cstrike/liblist.gam"

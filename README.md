@@ -58,8 +58,8 @@ This image takes the **simple, robust** approach: everything is assembled
    environment.
 3. Run HLDS.
 
-There is **no update machinery** — no SteamCMD at runtime, no overlay
-re-application, nothing that can clobber ReHLDS. To move to newer component
+There is **no update machinery** — no SteamCMD at runtime, nothing that
+re-applies the stack or can clobber ReHLDS. To move to newer component
 versions you bump the pinned version in the `Dockerfile` and rebuild.
 
 ## Prerequisites
@@ -100,24 +100,32 @@ rebuild needed. See [`.env.example`](.env.example) for the full list.
 | `MAX_PLAYERS` | player slots | `16` |
 | `DEFAULT_MAP` | boot map | `de_dust2` |
 | `SV_REGION` | Steam master-server region (`255` = world) | `255` |
-| `BOTS_ENABLED` | load YaPB bots | `true` |
-| `BOT_QUOTA` / `BOT_DIFFICULTY` | bot count / skill | `6` / `3` |
+| `BOTS_ENABLED` | load YaPB bots (count/skill are YaPB defaults — edit `yapb.cfg`, see below) | `true` |
 | `REUNION_ENABLED` | accept non-Steam clients | `false` |
 | `EXTRA_START_PARAMS` | extra HLDS launch flags | `-pingboost 1 +sys_ticrate 1000` |
 
 After editing `.env`: `docker compose up -d` to recreate with the new settings.
 
-**Config files inside the volume** (`DATA_DIR/cstrike/`):
+`.env` holds **runtime** config only; topology (container name, volume path) lives
+in `docker-compose.yml`. Bot **count and difficulty** are not in `.env` — they stay
+at YaPB's stock defaults, tuned by editing the live `addons/yapb/conf/yapb.cfg`
+(see below); `BOTS_ENABLED` only decides whether bots load at all.
+
+**Config files inside the volume** (`serverdata/<name>/cstrike/`, e.g.
+`serverdata/default/cstrike/` for the single server):
 
 - `server.cfg` — regenerated every start from `config/server.cfg` + your
   `.env`. Do **not** edit it directly; it is overwritten.
 - `server-custom.cfg` — **your** server escape hatch. Seeded empty, `exec`'d
   last (so it wins), never overwritten. Put any custom server cvars here.
   (An older `serverextra.cfg` is auto-renamed to this on first start.)
-- `addons/yapb/conf/yapb-overlay.cfg` — YaPB tuning overlay. Seeded with
-  performance-tuned bot defaults, `exec`'d after YaPB's stock `yapb.cfg` (so it wins)
-  on every map, never overwritten. Edit it to tune bots; see `yapb.cfg` for the
-  full cvar list.
+- `addons/yapb/conf/yapb.cfg` — YaPB's own config, and the place for all bot
+  tuning: count, mode and difficulty (`yb_quota` / `yb_quota_mode` /
+  `yb_difficulty` / `yb_autovacate`) are at YaPB's stock defaults (`9` /
+  `normal` / `3` / `1`). Edit them here in the live file — changes apply on the
+  next map change, no restart, and survive it (YaPB re-execs this file each map).
+  Our performance defaults (`yb_think_fps` etc.) are baked into this file at
+  build time. (`.env`'s `BOTS_ENABLED` only toggles whether YaPB loads.)
 - `addons/amxmodx/configs/users.ini` — the AMX Mod X admin list. Seeded from
   the image, then yours to edit. If `OWNER` is set in `.env`, the container
   also rewrites a marked owner block in it on every start (full admin by
@@ -157,6 +165,10 @@ docker compose exec csserver rcon "amx_version"
 `rcon` is a small client baked into the image; it reads `RCON_PASSWORD` from
 the environment. RCON also works from any external RCON tool against your
 public IP.
+
+Running [multiple servers](#running-multiple-servers)? Address each by its
+service name and add the fleet file, e.g.
+`docker compose -f docker-compose.fleet.example.yml exec cstrike-01 rcon "meta list"`.
 
 ### In-game admin
 
@@ -205,20 +217,42 @@ server listing can take a few minutes after start.
 
 ## Persistence
 
-The serverfiles live in a volume (`DATA_DIR`, default `./serverdata`), seeded
-from the image's baked-in copy on first run. Maps, logs, admin lists
-(`users.ini`) and bans persist there. To reset the server to a clean state,
-stop it and delete the directory — the next start re-seeds it.
+Each server's files live in its own host directory under `./serverdata/<name>`
+(the single server's is `./serverdata/default`), seeded from the image's baked-in
+copy on first run. Maps, logs, admin lists (`users.ini`) and bans persist there.
+To reset a server to a clean state, stop it and delete its `./serverdata/<name>`
+directory — the next start re-seeds it.
 
-## Running a second instance
+## Running multiple servers
+
+Run any number of servers from the **one** image this repo builds — no copied
+repos. Each server is just a service block, its own env file, and its own
+`./serverdata/<name>` volume. See
+[`docker-compose.fleet.example.yml`](docker-compose.fleet.example.yml), which
+defines two (`cstrike-01`, `cstrike-02`).
 
 ```bash
-cp -r . ../cs16-server-2 && cd ../cs16-server-2
-# edit .env: different SERVER_PORT (e.g. 27016), CONTAINER_NAME, DATA_DIR
-docker compose up -d --build
+# 1. build the shared image once (the single-server compose owns the build)
+docker compose build
+
+# 2. one env file per server, each with a DISTINCT SERVER_PORT / CLIENT_PORT
+cp cstrike-01.env.example cstrike-01.env    # edit: RCON_PASSWORD, ports, name, ...
+cp cstrike-02.env.example cstrike-02.env
+
+# 3. bring the fleet up (each `up` only renders + seeds its own volume)
+docker compose -f docker-compose.fleet.example.yml up -d
+docker compose -f docker-compose.fleet.example.yml exec cstrike-01 rcon "meta list"
 ```
 
-Each instance is fully independent (own `.env`, own volume, own port).
+Each server is fully independent: own env file, own `./serverdata/<name>` volume
+(admins, bans, bot tuning in `yapb.cfg`, Reunion salt), own ports. The compose file holds only
+**topology** (service name, container name, volume, image) with no `${...}`
+interpolation; all runtime config is in the env files.
+
+> **Co-resident servers share the host network.** Give each a distinct
+> `SERVER_PORT` / `CLIENT_PORT`. The VAC/Steam port (UDP 26900) behaviour with
+> multiple instances still needs confirming — see the note at the bottom of the
+> fleet file if only one server ends up listed.
 
 ## Troubleshooting
 
@@ -229,7 +263,7 @@ Each instance is fully independent (own `.env`, own volume, own port).
 | `undefined symbol: SteamGameServer_Init` | The build used the wrong HLDS — the `STEAM_BRANCH` build arg must be `steam_legacy`. Rebuild. |
 | Build fails on GPG | If GitHub is unreachable at build time, build with `--build-arg GPG_VERIFY=false` (SHA256 verification still runs). |
 | `rcon` rejected | `RCON_PASSWORD` mismatch, or RCON disabled (empty password). |
-| Want to reset everything | `docker compose down`, delete `DATA_DIR`, `docker compose up -d`. |
+| Want to reset everything | `docker compose down`, delete the server's `./serverdata/<name>` dir (single server: `./serverdata/default`), `docker compose up -d`. |
 
 ## Out of scope
 
@@ -238,16 +272,20 @@ Intentionally **not** implemented:
 - HLTV / SourceTV
 - Web admin panel
 - Stats / external logging integrations
-- Multi-instance orchestration (the compose file is copy-pasteable, but there
-  is no built-in second-instance config)
+- A fleet manager / orchestrator. Running several servers is supported (see
+  [Running multiple servers](#running-multiple-servers)), but it is a static
+  compose file you edit by hand — no dynamic scaling or scheduler.
 - Dynamic DNS / changing-IP handling
 
 ## Repository layout
 
 ```
-Dockerfile              multi-stage: build the server -> lean runtime image
-docker-compose.yml      production compose: env, volume, restart, healthcheck
-.env.example            every tunable, commented
+Dockerfile                       multi-stage: build the server -> lean runtime image
+docker-compose.yml               single-server topology: build, volume, restart, healthcheck
+docker-compose.fleet.example.yml multi-server example: N services off the one image
+.env.example                     single-server runtime config, every tunable commented
+cstrike-01.env.example           per-server runtime config templates for the fleet
+cstrike-02.env.example
 scripts/
   build-server.sh       build-time: SteamCMD install + ReHLDS assembly
   entrypoint.sh         runtime: seed volume, render config, run HLDS
@@ -256,8 +294,8 @@ scripts/
 config/
   server.cfg            CS 1.6 config template (ReHLDS flood protection)
   plugins.ini           Metamod plugin list template
-  amxx.cfg              AMX Mod X core config
-  yapb-overlay.cfg      YaPB performance/behaviour overlay (exec'd after yapb.cfg)
   reunion.cfg           Reunion config template
   rehlds-signing-key.asc  vendored ReHLDS GPG public key
+docs/
+  multi-server-refactor.md  the phased plan behind the single-image/N-servers layout
 ```

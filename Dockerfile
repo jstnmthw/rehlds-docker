@@ -80,7 +80,6 @@ RUN mkdir -p /build/curated && chown -R steam:steam /build
 COPY --chown=steam:steam scripts/build-server.sh        /build/build-server.sh
 COPY --chown=steam:steam scripts/clear-execstack.py     /build/clear-execstack.py
 COPY --chown=steam:steam config/rehlds-signing-key.asc  /build/curated/rehlds-signing-key.asc
-COPY --chown=steam:steam config/yapb-overlay.cfg        /build/curated/yapb-overlay.cfg
 
 # SteamCMD must not run as root.
 USER steam

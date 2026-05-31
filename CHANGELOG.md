@@ -15,6 +15,21 @@ All component versions are pinned for reproducible builds. Floating tags
 
 ### Changed
 
+- **YaPB tuning model simplified — overlay dropped.** The curated
+  `config/yapb-overlay.cfg` and the `exec` hook appended to `yapb.cfg` are
+  gone. Instead `build-server.sh` now rewrites our performance/behaviour cvar
+  *values* (`yb_think_fps`, `yb_path_floyd_memory_limit`,
+  `yb_path_astar_post_smooth`, `yb_graph_analyze_fps`) directly in the stock
+  `yapb.cfg` at build time — the same in-place-patch approach already used for
+  `liblist.gam` / `modules.ini`. The patch asserts each target cvar exists and
+  fails the build if upstream renames one. Bot *tuning* (`yb_quota` /
+  `yb_quota_mode` / `yb_difficulty` / `yb_autovacate`) is no longer curated at
+  all — it is left at YaPB's stock defaults (`9` / `normal` / `3` / `1`), tuned
+  by editing the live `yapb.cfg` in the volume (same model as `amxx.cfg`).
+  Rationale: an overlay only earns its keep for *manual* edits that would vanish
+  on a version bump; a build-time patch re-applies every build and the values
+  live in `yapb.cfg` (re-exec'd each changelevel), so it survives both rebuilds
+  and map changes without the extra file or runtime indirection.
 - **AMX Mod X upgraded `1.9.0.5303` → `1.10.0.5476`** — both the base and
   cstrike Linux assets are bumped together (they share the `AMXX_VERSION` /
   `AMXX_BUILD` ARGs) and re-pinned by SHA256:

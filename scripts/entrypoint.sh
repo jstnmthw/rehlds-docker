@@ -69,15 +69,10 @@ render_server_cfg() {
       echo "log on"
       echo "logaddress_add ${LOG_ADDRESS/:/ }"
     fi
-    if [[ "${BOTS_ENABLED:-true}" == "true" ]]; then
-      echo "// YaPB bots enabled"
-      echo "yb_quota ${BOT_QUOTA:-6}"
-      echo "yb_quota_mode \"${BOT_QUOTA_MODE:-fill}\""
-      echo "yb_difficulty ${BOT_DIFFICULTY:-3}"
-      echo "yb_autovacate 1"
-    else
-      echo "// YaPB bots disabled (BOTS_ENABLED=false)"
-    fi
+    # YaPB bot tuning is NOT set here — BOTS_ENABLED only gates whether YaPB
+    # loads (via plugins.ini). Bot count/difficulty stay at YaPB's stock
+    # defaults; tune them by editing the live addons/yapb/conf/yapb.cfg. (Our
+    # baked perf cvars are patched into that same file at build time.)
     echo
     echo "// User overrides — edit cstrike/server-custom.cfg (persisted, exec'd last)."
     echo "exec server-custom.cfg"

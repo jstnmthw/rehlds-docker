@@ -1,0 +1,82 @@
+# =============================================================================
+#  ReHLDS Counter-Strike 1.6  —  fleet example (multiple servers, one image)
+# =============================================================================
+#  Run any number of CS 1.6 servers from the SINGLE image this repo builds. Each
+#  server is just three things: a service block (below), its own env file, and
+#  its own ./serverdata/<name> volume. The engine, addons and config model are
+#  identical across all of them — only the env + volume differ.
+#
+#  This file is an EXAMPLE. Copy it (or edit in place), add/remove services to
+#  taste, and create the matching env files.
+#
+#  ---------------------------------------------------------------------------
+#  Usage
+#  ---------------------------------------------------------------------------
+#  1. Build the image ONCE (this file has no `build:` — it only references the
+#     already-built image). The single-server compose owns the build:
+#         docker compose build                       # tags rehlds-csserver:local
+#
+#  2. Create one env file per server from the templates, and set a DISTINCT
+#     SERVER_PORT / CLIENT_PORT in each (they share the host's network):
+#         cp cstrike-01.env.example cstrike-01.env   # edit: RCON_PASSWORD, ports, ...
+#         cp cstrike-02.env.example cstrike-02.env
+#
+#  3. Bring the fleet up. Each `up` only renders config and seeds its own
+#     volume; nothing rebuilds the shared image:
+#         docker compose -f docker-compose.fleet.example.yml up -d
+#
+#  Per-server admin addresses the service by name:
+#         docker compose -f docker-compose.fleet.example.yml logs -f cstrike-01
+#         docker compose -f docker-compose.fleet.example.yml exec cstrike-01 rcon "meta list"
+#
+#  Bot tuning (count/difficulty) is per-server: edit each volume's
+#  cstrike/addons/yapb/conf/yapb.cfg (YaPB stock defaults), not the env file.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+#  Shared service skeleton — same shape as docker-compose.yml's anchor. (YAML
+#  anchors do not cross files, so each compose file defines its own.) Topology
+#  only, no ${...}; `image:` (not `build:`) so every server reuses the one built
+#  image.
+# -----------------------------------------------------------------------------
+x-csserver: &csserver
+  image: rehlds-csserver:local
+
+  # Host networking — reliable GoldSrc master-server registration. Every server
+  # binds its own SERVER_PORT / CLIENT_PORT (set in its env file) directly on the
+  # host, so those MUST be distinct per co-resident server.
+  network_mode: host
+
+  restart: unless-stopped
+  init: true
+  stop_grace_period: 30s
+
+  # Keys off the container's SERVER_PORT, so each server probes its own port.
+  healthcheck:
+    test: ["CMD", "/opt/cs16/healthcheck.sh"]
+    interval: 60s
+    timeout: 15s
+    start_period: 90s
+    retries: 3
+
+services:
+  # --- Server #1 -------------------------------------------------------------
+  cstrike-01:
+    <<: *csserver
+    container_name: cstrike-01
+    env_file:
+      - cstrike-01.env                 # SERVER_PORT 27015 / CLIENT_PORT 27005
+    volumes:
+      - ./serverdata/cstrike-01:/server
+
+  # --- Server #2 -------------------------------------------------------------
+  cstrike-02:
+    <<: *csserver
+    container_name: cstrike-02
+    env_file:
+      - cstrike-02.env                 # SERVER_PORT 27016 / CLIENT_PORT 27006
+    volumes:
+      - ./serverdata/cstrike-02:/server
+
+  # Add more servers by copying a block above: pick a new name, env file and
+  # ./serverdata/<name> volume, and a fresh SERVER_PORT / CLIENT_PORT pair.
