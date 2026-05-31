@@ -5,56 +5,9 @@ All component versions are pinned for reproducible builds. Floating tags
 
 ## [Unreleased]
 
-### Added
-
-- **`OWNER` env var** — set it to the server owner's SteamID and the entrypoint
-  bootstraps that SteamID into AMX Mod X as a full admin (all command flags +
-  immunity, SteamID auth, no password) on every start. It is written into a
-  container-managed marked block in `users.ini`; admins added by hand elsewhere
-  in the file are left untouched. Empty `OWNER` adds nothing. No rebuild needed.
-
-### Changed
-
-- **YaPB tuning model simplified — overlay dropped.** The curated
-  `config/yapb-overlay.cfg` and the `exec` hook appended to `yapb.cfg` are
-  gone. Instead `build-server.sh` now rewrites our performance/behaviour cvar
-  *values* (`yb_think_fps`, `yb_path_floyd_memory_limit`,
-  `yb_path_astar_post_smooth`, `yb_graph_analyze_fps`) directly in the stock
-  `yapb.cfg` at build time — the same in-place-patch approach already used for
-  `liblist.gam` / `modules.ini`. The patch asserts each target cvar exists and
-  fails the build if upstream renames one. Bot *tuning* (`yb_quota` /
-  `yb_quota_mode` / `yb_difficulty` / `yb_autovacate`) is no longer curated at
-  all — it is left at YaPB's stock defaults (`9` / `normal` / `3` / `1`), tuned
-  by editing the live `yapb.cfg` in the volume (same model as `amxx.cfg`).
-  Rationale: an overlay only earns its keep for *manual* edits that would vanish
-  on a version bump; a build-time patch re-applies every build and the values
-  live in `yapb.cfg` (re-exec'd each changelevel), so it survives both rebuilds
-  and map changes without the extra file or runtime indirection.
-- **AMX Mod X upgraded `1.9.0.5303` → `1.10.0.5476`** — both the base and
-  cstrike Linux assets are bumped together (they share the `AMXX_VERSION` /
-  `AMXX_BUILD` ARGs) and re-pinned by SHA256:
-  - base: `cd99e956b02b4818324f3ed5a624d7cea8f00ef6593974bb97d912ae7591ec73`
-  - cstrike: `4af2ce169be4ffdd9a33be89d25f18967395b72433333aa900549d5bf0b4d508`
-
-  `1.10.0.5476` is the latest stable AMX Mod X build (resolved 2026-05-31).
-  Metamod-R and ReAPI are unchanged — both are compatible with AMX Mod X 1.10.
-- **`serverextra.cfg` renamed to `server-custom.cfg`** — a consistent
-  `*-custom.cfg` naming for the operator escape-hatch file. The entrypoint
-  auto-migrates an existing `serverextra.cfg` to the new name on first start
-  after the upgrade, so operator cvars are preserved.
-
-### Removed
-
-- **Curated `amxx.cfg` dropped** — the build no longer overwrites AMX Mod X's
-  stock `amxx.cfg` with a curated copy, and the entrypoint no longer seeds an
-  `amxx-custom.cfg` escape hatch. AMX Mod X now ships its own stock `amxx.cfg`,
-  seeded into the volume on first run and editable directly — adjust AMX Mod X
-  settings there. (`server-custom.cfg` remains for server cvars.)
-
-## [1.0.0] — 2026-05-15
-
-Initial release: a Counter-Strike 1.6 dedicated server on the ReHLDS engine
-stack, assembled and pinned at build time.
+A Counter-Strike 1.6 dedicated server on the ReHLDS engine stack, assembled and
+pinned at build time. Nothing is tagged yet — this section is the working
+baseline and records the current pinned set and design.
 
 ### Base image
 
@@ -89,14 +42,15 @@ verified by SHA256; ReHLDS additionally verified by GPG signature.
 | **ReHLDS** | 3.14.0.857 | [`rehlds-bin-3.14.0.857.zip`](https://github.com/rehlds/ReHLDS/releases/download/3.14.0.857/rehlds-bin-3.14.0.857.zip) | `8e0bb2b36c70896f94f1ab642eeed17dcc1b345045cf076aabd64a0a67a4b733` |
 | **ReGameDLL_CS** | 5.28.0.756 | [`regamedll-bin-5.28.0.756.zip`](https://github.com/rehlds/ReGameDLL_CS/releases/download/5.28.0.756/regamedll-bin-5.28.0.756.zip) | `e9197ada843de6df4ed74cfe7b22bf5d93ba9e0c7b66490ca682120761978732` |
 | **Metamod-R** | 1.3.0.149 | [`metamod-bin-1.3.0.149.zip`](https://github.com/rehlds/Metamod-R/releases/download/1.3.0.149/metamod-bin-1.3.0.149.zip) | `ede7f59c4e0220afe8c02aa348a130cce527f87d36ffdb674e37a501ce57be94` |
-| **AMX Mod X** (base) | 1.9.0.5303 | [`amxmodx-1.9.0-git5303-base-linux.tar.gz`](https://github.com/alliedmodders/amxmodx/releases/download/1.9.0.5303/amxmodx-1.9.0-git5303-base-linux.tar.gz) | `1ed6898ced2c1fcf225c288b94effc19917e987b284e42911587738ee3c93699` |
-| **AMX Mod X** (cstrike) | 1.9.0.5303 | [`amxmodx-1.9.0-git5303-cstrike-linux.tar.gz`](https://github.com/alliedmodders/amxmodx/releases/download/1.9.0.5303/amxmodx-1.9.0-git5303-cstrike-linux.tar.gz) | `a2a5ef44bb366a90adf432c708ac49eb63b4b44d7b0de123e8cd52395d27b8e9` |
+| **AMX Mod X** (base) | 1.10.0.5476 | [`amxmodx-1.10.0-git5476-base-linux.tar.gz`](https://github.com/alliedmodders/amxmodx/releases/download/1.10.0.5476/amxmodx-1.10.0-git5476-base-linux.tar.gz) | `cd99e956b02b4818324f3ed5a624d7cea8f00ef6593974bb97d912ae7591ec73` |
+| **AMX Mod X** (cstrike) | 1.10.0.5476 | [`amxmodx-1.10.0-git5476-cstrike-linux.tar.gz`](https://github.com/alliedmodders/amxmodx/releases/download/1.10.0.5476/amxmodx-1.10.0-git5476-cstrike-linux.tar.gz) | `4af2ce169be4ffdd9a33be89d25f18967395b72433333aa900549d5bf0b4d508` |
 | **ReAPI** | 5.26.0.338 | [`reapi-bin-5.26.0.338.zip`](https://github.com/rehlds/ReAPI/releases/download/5.26.0.338/reapi-bin-5.26.0.338.zip) | `0f39de7428aacd0fc6890eab0af62c616b592408dd7ab8e91aa53787fba9e08d` |
 | **YaPB** | 4.4.957 | [`yapb-4.4.957-linux.tar.xz`](https://github.com/yapb/yapb/releases/download/4.4.957/yapb-4.4.957-linux.tar.xz) | `8c095ac89b9b2ccc70a66a71d608e1a570b5268c57c6083ced8c06161533a4b1` |
 | **Reunion** | 0.2.0.25 | [`reunion-0.2.0.25.zip`](https://github.com/rehlds/ReUnion/releases/download/0.2.0.25/reunion-0.2.0.25.zip) | `0f238276719274216bd169c578eac2db4e041946b8b9f0e407e41ef9d85efdf5` |
 
-All versions resolved and the URLs confirmed reachable (HTTP 200) on
-2026-05-15. These map to `ARG`s in the `Dockerfile`.
+URLs confirmed reachable (HTTP 200); the ReHLDS-stack assets were resolved on
+2026-05-15 and AMX Mod X `1.10.0.5476` on 2026-05-31. These map to `ARG`s in the
+`Dockerfile`.
 
 ### Version resolution notes
 
@@ -104,7 +58,9 @@ All versions resolved and the URLs confirmed reachable (HTTP 200) on
   [`rehlds/ReAPI`](https://github.com/rehlds/ReAPI).
 - **Reunion** repository is [`rehlds/ReUnion`](https://github.com/rehlds/ReUnion).
   `0.2.0.25` is the latest *stable* release (`0.2.0.34` is a pre-release).
-- **AMX Mod X**: `1.9.0.5303` is the latest *stable* (non-prerelease) build.
+- **AMX Mod X**: `1.10.0.5476` is the latest *stable* (non-prerelease) build.
+  The base and cstrike Linux assets share the `AMXX_VERSION` / `AMXX_BUILD` ARGs
+  and are pinned together. Metamod-R and ReAPI are compatible with AMX Mod X 1.10.
 - **YaPB**: `4.4.957` is the latest stable release (the rolling `continuous`
   pre-release tag is avoided).
 - **ReHLDS**: the `rehlds-bin` release asset ships the default ("bugfixed")
@@ -137,9 +93,15 @@ packages from the Debian repos):
 - Multi-stage `Dockerfile`: stage 1 installs CS 1.6 and applies the ReHLDS
   stack; stage 2 is a lean runtime with the finished server baked in.
 - `build-server.sh` — build-time SteamCMD install loop + component
-  download/verify + assembly.
+  download/verify + assembly. Also patches `liblist.gam`, appends `reapi` to
+  `modules.ini`, and rewrites the YaPB performance-cvar *values* in the stock
+  `yapb.cfg` in place (bot tuning is left at YaPB's stock defaults, tuned in the
+  live volume copy).
 - `entrypoint.sh` — runtime: seed the volume on first run, render env-driven
-  config, run HLDS as an unprivileged user.
+  config, run HLDS as an unprivileged user. Set `OWNER` to the server owner's
+  SteamID and it bootstraps that SteamID into AMX Mod X as a full admin via a
+  container-managed marked block in `users.ini`; hand-added admins elsewhere are
+  left untouched.
 - `healthcheck.sh` — A2S-query healthcheck.
 - `rcon` — minimal GoldSrc RCON client for admin commands.
 - ReHLDS flood-protection defaults in `config/server.cfg`.
