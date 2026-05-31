@@ -100,7 +100,7 @@ one wins.
 | | Baked (build) | Env-rendered (every start) | Volume-seeded (once) |
 |---|---|---|---|
 | **Shared** | gameplay defaults, rates, flood / RCON / ReHLDS hardening (`config/server.cfg`); YaPB perf cvars (patched into `yapb.cfg`) | — | — |
-| **Per-server** | — | identity, ports, passwords, `SV_*`, gates (`BOTS_ENABLED` / `REUNION_ENABLED`), `OWNER` | `server-custom.cfg`, YaPB bot tuning (live `yapb.cfg`), hand-added admins, `amxx.cfg`, reunion salt |
+| **Per-server** | — | identity, ports, passwords, `SV_*`, gates (`BOTS_ENABLED` / `REUNION_ENABLED`), `OWNER`, log retention (`LOG_RETENTION_DAYS`) | `server-custom.cfg`, YaPB bot tuning (live `yapb.cfg`), hand-added admins, `amxx.cfg`, reunion salt |
 
 The two axes map onto the file table below: **authority** is the "Kind" column,
 and the **env-rendered** column is what `.env` drives. Multi-server simply
@@ -202,3 +202,13 @@ therefore *not* in the `server.cfg` env block.
   use distinct `SERVER_PORT` / `CLIENT_PORT`. Whether multiple instances contend
   on the VAC/Steam port (UDP 26900) under host networking is unverified — see the
   open note in `docker-compose.fleet.example.yml`.
+- **Logging is unbounded at three sinks by default; this image caps all three.**
+  (1) Docker's stdout capture of the HLDS console is capped by a `logging:`
+  json-file block (`max-size 10m` × `max-file 3`) in the compose anchor — shared
+  topology, so it applies to every fleet member at once. (2) The engine's
+  in-volume logs (`cstrike/logs/`, a new file per map change) and (3) AMX Mod X's
+  logs (`addons/amxmodx/logs/`, daily) are pruned on every start by `prune_logs`
+  in `entrypoint.sh`, gated per-server by `LOG_RETENTION_DAYS` (env-rendered;
+  empty/0 = keep all). `log on` writes the gameplay log to *both* stdout and
+  `cstrike/logs/`, so caps (1) and (2) both matter. Reunion stays at
+  `LoggingMode = 1` (console only → folds into sink 1).

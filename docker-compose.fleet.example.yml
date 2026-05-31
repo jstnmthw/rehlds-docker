@@ -53,6 +53,16 @@ x-csserver: &csserver
   init: true
   stop_grace_period: 30s
 
+  # Cap each server's stdout log (HLDS console → Docker's json-file driver),
+  # otherwise UNBOUNDED. 10 MB × 3 files = 30 MB per server — so N fleet members
+  # can't silently fill the disk between them. In-volume log files are bounded
+  # separately by LOG_RETENTION_DAYS in each server's env file.
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
   # Keys off the container's SERVER_PORT, so each server probes its own port.
   healthcheck:
     test: ["CMD", "/opt/cs16/healthcheck.sh"]

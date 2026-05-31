@@ -46,6 +46,17 @@ x-csserver: &csserver
   init: true                  # reap zombies (HLDS is the main process)
   stop_grace_period: 30s
 
+  # Cap the per-container stdout log (HLDS console → Docker's json-file driver),
+  # which is otherwise UNBOUNDED and grows for the life of the container. 10 MB ×
+  # 3 files = 30 MB hard cap per server, so a busy fleet can't silently fill the
+  # disk. The in-volume log files (cstrike/logs/, addons/amxmodx/logs/) are a
+  # separate sink, bounded by LOG_RETENTION_DAYS in the env file.
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
   # A2S-query healthcheck: confirms the server actually answers Steam queries
   # (the image also defines this; restated here for visibility). It keys off the
   # container's SERVER_PORT, so each server probes its own port.

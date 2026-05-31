@@ -177,11 +177,38 @@ EOF
   log "seeded cstrike/server-custom.cfg"
 }
 
+# Prune old log files from the volume. Two sinks grow without bound and nothing
+# else rotates them: the engine writes a new cstrike/logs/L*.log on every map
+# change (log on + sv_log_onefile 0), and AMX Mod X writes a new
+# addons/amxmodx/logs/*.log every day. Gated by LOG_RETENTION_DAYS: a positive
+# integer deletes *.log files older than that many days from those two dirs;
+# empty / 0 / unset keeps everything (no pruning). The separate stdout copy of
+# the console log is capped by the compose `logging:` json-file block, not here.
+prune_logs() {
+  local days="${LOG_RETENTION_DAYS:-}"
+  if [[ -z "${days}" || "${days}" == "0" ]]; then
+    log "log pruning disabled (LOG_RETENTION_DAYS empty/0) — in-volume logs kept"
+    return 0
+  fi
+  if ! [[ "${days}" =~ ^[0-9]+$ ]]; then
+    log "WARNING: LOG_RETENTION_DAYS='${days}' is not a non-negative integer — skipping log pruning"
+    return 0
+  fi
+  local dir n total=0
+  for dir in "${GAMEDIR}/logs" "${GAMEDIR}/addons/amxmodx/logs"; do
+    [[ -d "${dir}" ]] || continue
+    n=$(find "${dir}" -type f -name '*.log' -mtime "+${days}" -print -delete 2>/dev/null | wc -l)
+    total=$((total + n))
+  done
+  log "pruned ${total} log file(s) older than ${days}d (LOG_RETENTION_DAYS)"
+}
+
 render_server_cfg
 render_plugins_ini
 render_reunion
 render_admins
 seed_server_custom
+prune_logs
 
 # --- 3. fix ownership/perms and hand off to HLDS ----------------------------
 chown -R "${RUN_USER}:${RUN_USER}" "${SERVER}"
