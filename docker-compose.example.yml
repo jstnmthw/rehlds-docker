@@ -1,7 +1,9 @@
 # =============================================================================
-#  ReHLDS Counter-Strike 1.6 server  —  docker compose (single server)
+#  ReHLDS Counter-Strike 1.6 server  —  docker compose template (single server)
 # =============================================================================
-#  Quick start:
+#  This is the SINGLE-SERVER template. `docker compose` reads docker-compose.yml
+#  by default, which is gitignored — copy this into place first, then start:
+#     cp docker-compose.example.yml docker-compose.yml
 #     cp .env.example .env      # then edit .env (set RCON_PASSWORD!)
 #     docker compose up -d --build
 #
@@ -18,8 +20,8 @@
 #     mv serverdata serverdata.bak && mkdir serverdata && mv serverdata.bak serverdata/default
 #     docker compose up -d
 #
-#  To run MULTIPLE servers from this one image, see
-#  docker-compose.fleet.example.yml — one service, one env file and one
+#  To run MULTIPLE servers from this one image, copy docker-compose.fleet.example.yml
+#  to docker-compose.yml instead — one service, one env file and one
 #  ./serverdata/<name> volume per server.
 # =============================================================================
 

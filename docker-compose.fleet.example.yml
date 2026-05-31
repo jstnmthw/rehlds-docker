@@ -24,6 +24,8 @@
 #  3. Bring the fleet up. Each `up` only renders config and seeds its own
 #     volume; nothing rebuilds the shared image:
 #         docker compose -f docker-compose.fleet.example.yml up -d
+#     (Or copy this file to docker-compose.yml — gitignored — to use bare
+#     `docker compose` commands without the -f flag.)
 #
 #  Per-server admin addresses the service by name:
 #         docker compose -f docker-compose.fleet.example.yml logs -f cstrike-01
@@ -34,7 +36,7 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-#  Shared service skeleton — same shape as docker-compose.yml's anchor. (YAML
+#  Shared service skeleton — same shape as docker-compose.example.yml's anchor. (YAML
 #  anchors do not cross files, so each compose file defines its own.) Topology
 #  only, no ${...}; `image:` (not `build:`) so every server reuses the one built
 #  image.

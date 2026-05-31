@@ -12,6 +12,11 @@ flood-rate limiting that stock HLDS lacks.
 
 ## Commands
 
+`docker compose` reads `docker-compose.yml`, which is **gitignored**. Copy a
+template into place first: `cp docker-compose.example.yml docker-compose.yml`
+(single server) or `cp docker-compose.fleet.example.yml docker-compose.yml`
+(fleet). The `docker-compose*.example.yml` templates are the tracked source.
+
 ```bash
 docker compose build                 # build the image (tags rehlds-csserver:local)
 docker compose build --no-cache      # clean build — re-runs SteamCMD + all downloads
@@ -22,7 +27,7 @@ docker compose exec csserver rcon "<cmd>"            # RCON (e.g. "meta list", "
 docker compose exec csserver /opt/cs16/healthcheck.sh  # A2S probe -> HEALTHY / UNHEALTHY
 ```
 
-Build with `GPG_VERIFY=false` (in `docker-compose.yml` build args, or
+Build with `GPG_VERIFY=false` (in `docker-compose.example.yml` build args, or
 `docker build --build-arg GPG_VERIFY=false`) only when GitHub is unreachable at
 build time — SHA256 verification still runs.
 
@@ -137,16 +142,19 @@ The split is strict:
 
 - **Compose files hold topology only** — service name, `container_name`, the
   `./serverdata/<name>:/server` volume, and `image:`. They carry **no `${...}`
-  interpolation**; `docker-compose.yml` (single) and `docker-compose.fleet.example.yml`
+  interpolation**; `docker-compose.example.yml` (single) and `docker-compose.fleet.example.yml`
   share one anchor shape (`x-csserver: &csserver`, merged with `<<: *csserver`).
+  Both are templates: `docker compose` reads `docker-compose.yml` (gitignored),
+  so the operator copies one into place — see [Commands](#commands).
 - **Env files hold runtime config only** — everything the entrypoint reads
   (identity, ports, passwords, `SV_*`, `OWNER`, the `BOTS_ENABLED` / `REUNION_ENABLED`
   gates). Injected via `env_file:`, applied at start, no rebuild.
 
 The single server lives at `./serverdata/default` with `.env`; the fleet example
 defines `cstrike-01` / `cstrike-02`, each with its own `cstrike-NN.env` and
-`./serverdata/cstrike-NN` volume. `build:` lives only on the single-server service,
-so the fleet reuses the one built image — build once (`docker compose build`), run N.
+`./serverdata/cstrike-NN` volume. `build:` lives only on the single-server template,
+so the fleet reuses the one built image — build once
+(`docker compose -f docker-compose.example.yml build`), run N.
 With more than one server, `docker compose exec` / `logs` take the **service name**
 (and the fleet needs `-f docker-compose.fleet.example.yml`).
 

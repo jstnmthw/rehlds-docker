@@ -1,8 +1,9 @@
 # Test plan
 
 Verification steps for the ReHLDS CS 1.6 image. Run them in order. Commands
-assume you are in the repo directory with a `.env` created
-(`cp .env.example .env`, then set `RCON_PASSWORD` / `SERVER_NAME`).
+assume you are in the repo directory with `docker-compose.yml` in place
+(`cp docker-compose.example.yml docker-compose.yml`, gitignored) and a `.env`
+created (`cp .env.example .env`, then set `RCON_PASSWORD` / `SERVER_NAME`).
 
 The compose service is named `csserver`.
 

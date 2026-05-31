@@ -73,11 +73,16 @@ versions you bump the pinned version in the `Dockerfile` and rebuild.
 ## Quick start
 
 ```bash
+cp docker-compose.example.yml docker-compose.yml   # pick the single-server topology
 cp .env.example .env
 nano .env                       # at minimum, set RCON_PASSWORD and SERVER_NAME
 docker compose up -d --build
 docker compose logs -f          # watch the boot
 ```
+
+`docker-compose.yml` is gitignored — copy a template into place first
+(`docker-compose.example.yml` for a single server, `docker-compose.fleet.example.yml`
+for a fleet). The templates stay tracked; your working copy is yours.
 
 The build takes a while (SteamCMD installs CS 1.6 and the ReHLDS stack is
 assembled). Once built, container start is quick. You should see in the logs
@@ -232,8 +237,8 @@ repos. Each server is just a service block, its own env file, and its own
 defines two (`cstrike-01`, `cstrike-02`).
 
 ```bash
-# 1. build the shared image once (the single-server compose owns the build)
-docker compose build
+# 1. build the shared image once (the single-server template owns the build:)
+docker compose -f docker-compose.example.yml build
 
 # 2. one env file per server, each with a DISTINCT SERVER_PORT / CLIENT_PORT
 cp cstrike-01.env.example cstrike-01.env    # edit: RCON_PASSWORD, ports, name, ...
@@ -281,8 +286,9 @@ Intentionally **not** implemented:
 
 ```
 Dockerfile                       multi-stage: build the server -> lean runtime image
-docker-compose.yml               single-server topology: build, volume, restart, healthcheck
-docker-compose.fleet.example.yml multi-server example: N services off the one image
+docker-compose.example.yml       single-server topology template: build, volume, restart, healthcheck
+docker-compose.fleet.example.yml multi-server template: N services off the one image
+                                 (copy one to docker-compose.yml — gitignored — to run)
 .env.example                     single-server runtime config, every tunable commented
 cstrike-01.env.example           per-server runtime config templates for the fleet
 cstrike-02.env.example

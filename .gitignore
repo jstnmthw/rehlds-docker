@@ -1,8 +1,9 @@
 # =============================================================================
 #  .gitignore — ReHLDS Counter-Strike 1.6 server
 # =============================================================================
-#  Tracked: Dockerfile, docker-compose.yml, scripts/, config/, docs and
-#  .env.example. Ignored: secrets, runtime server data, editor/OS noise.
+#  Tracked: Dockerfile, the docker-compose*.example.yml templates, scripts/,
+#  config/, docs and .env.example. Ignored: secrets, the active
+#  docker-compose.yml, runtime server data, editor/OS noise.
 
 # --- Secrets / local config --------------------------------------------------
 # Real env files (RCON passwords, server names) are copied from the *.env.example
@@ -15,10 +16,18 @@
 .env.local
 .env.*.local
 
+# --- Active Compose file -----------------------------------------------------
+# docker-compose.yml is the file `docker compose` reads by default. It is NOT
+# tracked — pick a topology and copy a template into place:
+#   cp docker-compose.example.yml docker-compose.yml        # single server
+#   cp docker-compose.fleet.example.yml docker-compose.yml  # fleet
+# The docker-compose*.example.yml templates ARE tracked; your working copy is not.
+docker-compose.yml
+
 # --- Host-specific Compose overrides -----------------------------------------
 # docker-compose.override.yml is auto-merged by Compose; it and the fastdl/
 # nginx config are host-specific and copied to the prod box by hand — never
-# tracked, so the committed docker-compose.yml stays network-agnostic.
+# tracked, so the committed compose templates stay network-agnostic.
 docker-compose.override.yml
 fastdl/
 
