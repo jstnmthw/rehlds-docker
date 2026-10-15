@@ -1,13 +1,45 @@
 # Changelog
 
 All component versions are pinned for reproducible builds. Floating tags
-(`latest`, `master`, `continuous`) are deliberately not used.
+(`latest`, `master`) are deliberately not used. The one exception is the
+download *location* of YaPB: upstream stopped tagging releases, so the asset
+comes from its `continuous` release, but it is still pinned by its own build
+number and SHA256 (see the 2026-10-15 change below).
 
 ## [Unreleased]
 
 A Counter-Strike 1.6 dedicated server on the ReHLDS engine stack, assembled and
 pinned at build time. Nothing is tagged yet — this section is the working
 baseline and records the current pinned set and design.
+
+### Changes
+
+- **2026-10-15 — YaPB 4.4.957 → 4.8.1311 (`continuous` build of 2026-10-14,
+  master bffaa0b).** Upstream has not tagged a release since 4.4.957
+  (2024-02-10); the `continuous` release is rebuilt from master on every push,
+  but every build carries its own version in the asset name and a GitHub SHA256
+  digest, so the pin is `YAPB_VERSION` + `YAPB_SHA256` as before, plus
+  `YAPB_TAG=continuous` for the download URL. Caveat: upstream deletes the
+  previous assets on the next push, so a later `--no-cache` rebuild fails at
+  the fetch until both are bumped to the current build (digest from the
+  release's asset list). Why: 4.4.957 saves bot practice data with a quadratic
+  array copy at every level change; a 24/7 single-map server reached a 25–37 s
+  one-core freeze per map change (diagnosed 2026-10-15). 4.8 rewrote that
+  storage. Side effects: `yb_graph_analyze_fps` no longer exists (its
+  `yapb_set` line is gone; 10 cvars removed, 22 added in `yapb.cfg`), and the
+  practice (`.prc`, v2→v6) and vistable (`.vis`, v3→v5) files are rejected once
+  ("Damaged ... Version number differs") and regenerated; graph files (v2) load
+  unchanged. `yapb.cfg` lives in the volume and is seeded once, so
+  `scripts/migrate-yapb-cfg.py <name>` rewrites it from the new image's stock
+  file with the operator's tuned values carried over (run while the old
+  container is still up, then `up -d`).
+- **2026-10-13 — Runs with no root process.** The compose templates now start
+  the container as the image's `steam` user (`user: "1000:1000"`) with every
+  capability dropped and `no-new-privileges`. `entrypoint.sh` detects a
+  non-root start and skips its chown / `gosu` step, running HLDS as that user
+  directly; started as root (the image default) it behaves as before. A
+  brand-new `./serverdata/<name>` volume must be owned by uid 1000 before the
+  first start (an existing one already is, from its earlier root starts).
 
 ### Base image
 
@@ -45,11 +77,12 @@ verified by SHA256; ReHLDS additionally verified by GPG signature.
 | **AMX Mod X** (base) | 1.10.0.5476 | [`amxmodx-1.10.0-git5476-base-linux.tar.gz`](https://github.com/alliedmodders/amxmodx/releases/download/1.10.0.5476/amxmodx-1.10.0-git5476-base-linux.tar.gz) | `cd99e956b02b4818324f3ed5a624d7cea8f00ef6593974bb97d912ae7591ec73` |
 | **AMX Mod X** (cstrike) | 1.10.0.5476 | [`amxmodx-1.10.0-git5476-cstrike-linux.tar.gz`](https://github.com/alliedmodders/amxmodx/releases/download/1.10.0.5476/amxmodx-1.10.0-git5476-cstrike-linux.tar.gz) | `4af2ce169be4ffdd9a33be89d25f18967395b72433333aa900549d5bf0b4d508` |
 | **ReAPI** | 5.26.0.338 | [`reapi-bin-5.26.0.338.zip`](https://github.com/rehlds/ReAPI/releases/download/5.26.0.338/reapi-bin-5.26.0.338.zip) | `0f39de7428aacd0fc6890eab0af62c616b592408dd7ab8e91aa53787fba9e08d` |
-| **YaPB** | 4.4.957 | [`yapb-4.4.957-linux.tar.xz`](https://github.com/yapb/yapb/releases/download/4.4.957/yapb-4.4.957-linux.tar.xz) | `8c095ac89b9b2ccc70a66a71d608e1a570b5268c57c6083ced8c06161533a4b1` |
+| **YaPB** | 4.8.1311 | [`yapb-4.8.1311-linux.tar.xz`](https://github.com/yapb/yapb/releases/download/continuous/yapb-4.8.1311-linux.tar.xz) (the `continuous` release; URL valid only until upstream's next push, see Changes) | `085653b21f9a395f2a443d35c65aa155a86618a3f67926dc3933ca527aa0aebb` |
 | **Reunion** | 0.2.0.25 | [`reunion-0.2.0.25.zip`](https://github.com/rehlds/ReUnion/releases/download/0.2.0.25/reunion-0.2.0.25.zip) | `0f238276719274216bd169c578eac2db4e041946b8b9f0e407e41ef9d85efdf5` |
 
 URLs confirmed reachable (HTTP 200); the ReHLDS-stack assets were resolved on
-2026-05-15 and AMX Mod X `1.10.0.5476` on 2026-05-31. These map to `ARG`s in the
+2026-05-15, AMX Mod X `1.10.0.5476` on 2026-05-31 and YaPB `4.8.1311` on
+2026-10-15. These map to `ARG`s in the
 `Dockerfile`.
 
 ### Version resolution notes
@@ -61,8 +94,16 @@ URLs confirmed reachable (HTTP 200); the ReHLDS-stack assets were resolved on
 - **AMX Mod X**: `1.10.0.5476` is the latest *stable* (non-prerelease) build.
   The base and cstrike Linux assets share the `AMXX_VERSION` / `AMXX_BUILD` ARGs
   and are pinned together. Metamod-R and ReAPI are compatible with AMX Mod X 1.10.
-- **YaPB**: `4.4.957` is the latest stable release (the rolling `continuous`
-  pre-release tag is avoided).
+- **YaPB**: `4.4.957` (2024-02-10) is still the last tagged release; upstream
+  now publishes only the rolling `continuous` pre-release, rebuilt from master
+  on every push. Its assets are versioned by build number
+  (`yapb-<version>-linux.tar.xz`) and carry a GitHub SHA256 digest, so the
+  Dockerfile pins `YAPB_VERSION` + `YAPB_SHA256` and uses `YAPB_TAG` only for
+  the URL. To resolve the current build: open the `continuous` release, read
+  the version from the Linux asset's file name and the SHA256 from its digest.
+  The assets are GPG-signed (key `FC03F18A5E7DCE282A4B9D48194F2DA6C5F2FA24`),
+  but that key is not published on keys.openpgp.org or the maintainer's GitHub
+  keys, so YaPB is SHA256-only, as before.
 - **ReHLDS**: the `rehlds-bin` release asset ships the default ("bugfixed")
   engine build.
 

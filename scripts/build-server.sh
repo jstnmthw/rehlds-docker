@@ -138,7 +138,7 @@ fetch "reapi.zip" \
   "${GH}/rehlds/ReAPI/releases/download/${REAPI_VERSION}/reapi-bin-${REAPI_VERSION}.zip" \
   "${REAPI_SHA256}"
 fetch "yapb.tar.xz" \
-  "${GH}/yapb/yapb/releases/download/${YAPB_VERSION}/yapb-${YAPB_VERSION}-linux.tar.xz" \
+  "${GH}/yapb/yapb/releases/download/${YAPB_TAG:-${YAPB_VERSION}}/yapb-${YAPB_VERSION}-linux.tar.xz" \
   "${YAPB_SHA256}"
 fetch "reunion.zip" \
   "${GH}/rehlds/ReUnion/releases/download/${REUNION_VERSION}/reunion-${REUNION_VERSION}.zip" \
@@ -206,9 +206,8 @@ yapb_set yb_think_fps               60.0
 yapb_set yb_path_floyd_memory_limit 32
 # Post-smooth A* paths (stock 0): de-zig-zag bot routes, trivial CPU cost.
 yapb_set yb_path_astar_post_smooth  1
-# One-time map-graph analyzer FPS (stock 30.0): finish first-load analysis
-# faster; no effect on normal gameplay.
-yapb_set yb_graph_analyze_fps       60.0
+# yb_graph_analyze_fps was removed upstream in 4.8 (analysis is now time-sliced by
+# yb_graph_analyze_slice_ms, left at stock). yapb_set would FATAL on it.
 note "tuned YaPB performance cvars in yapb.cfg (bot count/difficulty left at YaPB defaults)"
 
 # --- patch liblist.gam so HLDS loads Metamod --------------------------------
@@ -285,7 +284,7 @@ ReGameDLL_CS    ${REGAMEDLL_VERSION}
 Metamod-R       ${METAMOD_VERSION}
 AMXModX         ${AMXX_VERSION}.${AMXX_BUILD}
 ReAPI           ${REAPI_VERSION}
-YaPB            ${YAPB_VERSION}
+YaPB            ${YAPB_VERSION}${YAPB_TAG:+ (from release tag ${YAPB_TAG})}
 Reunion         ${REUNION_VERSION}
 HLDS branch     ${STEAM_BRANCH}
 EOF

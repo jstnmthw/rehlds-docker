@@ -53,6 +53,18 @@ x-csserver: &csserver
   init: true
   stop_grace_period: 30s
 
+  # No root process at all: started as the image's "steam" user (uid 1000),
+  # the entrypoint skips its chown/gosu step and runs HLDS as that user
+  # directly. The ./serverdata/<name> volume must be owned by uid 1000 (it is
+  # after any root start; pre-create a brand-new one with that owner). No
+  # capability is needed: nothing binds below 1024 and nothing changes
+  # ownership. no-new-privileges blocks setuid escalation.
+  user: "1000:1000"
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
   # Cap each server's stdout log (HLDS console → Docker's json-file driver),
   # otherwise UNBOUNDED. 10 MB × 3 files = 30 MB per server — so N fleet members
   # can't silently fill the disk between them. In-volume log files are bounded

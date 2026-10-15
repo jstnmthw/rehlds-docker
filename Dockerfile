@@ -31,7 +31,14 @@ ARG METAMOD_VERSION=1.3.0.149
 ARG AMXX_VERSION=1.10.0
 ARG AMXX_BUILD=5476
 ARG REAPI_VERSION=5.26.0.338
-ARG YAPB_VERSION=4.4.957
+# YaPB: upstream stopped tagging after 4.4.957; the `continuous` release is
+# rebuilt from master on every push. Each build carries its own version in the
+# asset name and a GitHub SHA256 digest, so the pin stays VERSION + SHA256 and
+# the tag only names the release the asset is downloaded from. Upstream deletes
+# the previous assets on the next push: bump both to the current build before a
+# --no-cache rebuild (digest: the release's asset list on GitHub).
+ARG YAPB_TAG=continuous
+ARG YAPB_VERSION=4.8.1311
 ARG REUNION_VERSION=0.2.0.25
 
 # --- Pinned SHA256 checksums of the release assets --------------------------
@@ -41,7 +48,7 @@ ARG METAMOD_SHA256=ede7f59c4e0220afe8c02aa348a130cce527f87d36ffdb674e37a501ce57b
 ARG AMXX_BASE_SHA256=cd99e956b02b4818324f3ed5a624d7cea8f00ef6593974bb97d912ae7591ec73
 ARG AMXX_CSTRIKE_SHA256=4af2ce169be4ffdd9a33be89d25f18967395b72433333aa900549d5bf0b4d508
 ARG REAPI_SHA256=0f39de7428aacd0fc6890eab0af62c616b592408dd7ab8e91aa53787fba9e08d
-ARG YAPB_SHA256=8c095ac89b9b2ccc70a66a71d608e1a570b5268c57c6083ced8c06161533a4b1
+ARG YAPB_SHA256=085653b21f9a395f2a443d35c65aa155a86618a3f67926dc3933ca527aa0aebb
 ARG REUNION_SHA256=0f238276719274216bd169c578eac2db4e041946b8b9f0e407e41ef9d85efdf5
 
 # --- GPG verification of the ReHLDS signature -------------------------------
@@ -56,6 +63,7 @@ ENV STEAM_BRANCH=${STEAM_BRANCH} \
     AMXX_VERSION=${AMXX_VERSION} \
     AMXX_BUILD=${AMXX_BUILD} \
     REAPI_VERSION=${REAPI_VERSION} \
+    YAPB_TAG=${YAPB_TAG} \
     YAPB_VERSION=${YAPB_VERSION} \
     REUNION_VERSION=${REUNION_VERSION} \
     REHLDS_SHA256=${REHLDS_SHA256} \
@@ -96,7 +104,7 @@ ARG METAMOD_VERSION=1.3.0.149
 ARG AMXX_VERSION=1.10.0
 ARG AMXX_BUILD=5476
 ARG REAPI_VERSION=5.26.0.338
-ARG YAPB_VERSION=4.4.957
+ARG YAPB_VERSION=4.8.1311
 ARG REUNION_VERSION=0.2.0.25
 
 LABEL org.opencontainers.image.title="rehlds-csserver" \

@@ -67,7 +67,12 @@ Every component version is a Dockerfile `ARG` paired with a `*_SHA256` ARG;
 ReHLDS is additionally GPG-verified against a vendored key. Floating tags
 (`latest`, `master`) are never used. **To upgrade a component:** bump its
 `*_VERSION` and `*_SHA256` ARGs in `Dockerfile`, then rebuild. `CHANGELOG.md`
-records the pinned set.
+records the pinned set. YaPB is the one component whose asset is downloaded
+from a moving release (`YAPB_TAG=continuous`, because upstream stopped tagging
+after 4.4.957): it is still pinned by its own build number and SHA256, but
+upstream deletes the previous assets on every push to master, so before a
+`--no-cache` rebuild take the current version and digest from the release's
+asset list on GitHub and bump both.
 
 ### Runtime: seed + render, then run
 
@@ -81,6 +86,11 @@ records the pinned set.
    `users.ini` (rewrites a container-managed `OWNER` admin block — see below).
 3. Fixes ownership and `exec`s HLDS, dropping to the unprivileged `steam` user
    via `gosu`. HLDS becomes the container's main process (clean SIGTERM).
+   The compose templates start the container as that user already
+   (`user: "1000:1000"`, all capabilities dropped), in which case the
+   entrypoint skips the chown/`gosu` step and no root process exists at any
+   point. A brand-new `./serverdata/<name>` volume must therefore be owned by
+   uid 1000 before its first start.
 
 ### The two-layer config model
 

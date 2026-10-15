@@ -6,7 +6,9 @@
 #   1. seeds the /server volume from the baked-in server copy on first run,
 #   2. renders the env-driven config (server.cfg, Metamod plugins.ini,
 #      reunion.cfg, AMX Mod X users.ini) into the serverfiles,
-#   3. drops to the unprivileged "steam" user and execs HLDS.
+#   3. drops to the unprivileged "steam" user (when started as root) and
+#      execs HLDS. Started as a non-root user (compose `user:`), it skips the
+#      ownership fix and the drop: no root process exists at any point.
 #
 # There is no update machinery: the ReHLDS stack was applied at build time.
 #
@@ -211,7 +213,21 @@ seed_server_custom
 prune_logs
 
 # --- 3. fix ownership/perms and hand off to HLDS ----------------------------
-chown -R "${RUN_USER}:${RUN_USER}" "${SERVER}"
+# Two supported starts:
+#   * as root (image default): fix volume ownership, then drop to "steam" via
+#     gosu so HLDS runs unprivileged;
+#   * already as the unprivileged user (compose `user: "1000:1000"`): there is
+#     nothing to chown and nothing to drop, and no root process ever exists.
+#     The ./serverdata/<name> directory must then already be owned by uid 1000
+#     (any volume that has had a root start is; pre-create a brand-new one
+#     with that owner, or seed it once without `user:`).
+if [[ "$(id -u)" -eq 0 ]]; then
+  chown -R "${RUN_USER}:${RUN_USER}" "${SERVER}"
+  RUN_AS=(gosu "${RUN_USER}")
+else
+  RUN_AS=()
+  log "started as uid $(id -u): no ownership fix, no privilege drop"
+fi
 # Self-heal modes (defensive): every directory must be owner-traversable, and
 # the engine binaries must be executable.
 find "${SERVER}" -type d -exec chmod 0755 {} + 2>/dev/null || true
@@ -239,7 +255,7 @@ cd "${SERVER}"
 # connected client gets "Unknown command". Set as a localinfo override (not a
 # config.ini edit) so it survives Metamod-R version bumps, which replace
 # config.ini wholesale. Does not affect the server-console / rcon `meta` path.
-exec gosu "${RUN_USER}" ./hlds_run \
+exec "${RUN_AS[@]}" ./hlds_run \
   -norestart \
   -game cstrike \
   -strictportbind \
