@@ -32,7 +32,15 @@ baseline and records the current pinned set and design.
   unchanged. `yapb.cfg` lives in the volume and is seeded once, so
   `scripts/migrate-yapb-cfg.py <name>` rewrites it from the new image's stock
   file with the operator's tuned values carried over (run while the old
-  container is still up, then `up -d`).
+  container is still up, then `up -d`). **The rebuilt image alone does not
+  upgrade an existing server:** the entrypoint seeds `/server` once and never
+  refreshes it, so HLDS keeps loading the old `addons/yapb/bin/yapb.so` from
+  the volume (found 2026-10-15, when all three fleet members logged "YaPB
+  v4.4.957" from the new image). `scripts/refresh-yapb.sh <name>` copies the
+  image's `addons/yapb` tree into the volume (all but `conf/yapb.cfg` and
+  `data/train`), then the server is restarted. The same limitation applies to
+  every component in the stack; a general sync keyed on `/opt/cs16/VERSIONS`
+  is not built yet.
 - **2026-10-13 — Runs with no root process.** The compose templates now start
   the container as the image's `steam` user (`user: "1000:1000"`) with every
   capability dropped and `no-new-privileges`. `entrypoint.sh` detects a

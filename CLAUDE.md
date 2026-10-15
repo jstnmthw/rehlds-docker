@@ -67,7 +67,11 @@ Every component version is a Dockerfile `ARG` paired with a `*_SHA256` ARG;
 ReHLDS is additionally GPG-verified against a vendored key. Floating tags
 (`latest`, `master`) are never used. **To upgrade a component:** bump its
 `*_VERSION` and `*_SHA256` ARGs in `Dockerfile`, then rebuild. `CHANGELOG.md`
-records the pinned set. YaPB is the one component whose asset is downloaded
+records the pinned set. **A rebuild does not touch existing volumes:** the
+entrypoint seeds `/server` once, so a running server keeps the old binaries
+until they are copied in from the new image (`scripts/refresh-yapb.sh <name>`
+for YaPB; other components by hand or by resetting the volume) and the
+server is restarted. YaPB is the one component whose asset is downloaded
 from a moving release (`YAPB_TAG=continuous`, because upstream stopped tagging
 after 4.4.957): it is still pinned by its own build number and SHA256, but
 upstream deletes the previous assets on every push to master, so before a

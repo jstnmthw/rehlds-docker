@@ -188,7 +188,11 @@ container-managed `OWNER` block, which is regenerated each start).
 
 - **Component versions** (ReHLDS, AMX Mod X, …) are pinned as `ARG`s in the
   `Dockerfile`. To upgrade, bump the version and its `*_SHA256`, then
-  `docker compose up -d --build`.
+  `docker compose up -d --build`. An **existing** volume is not updated by the
+  rebuild: the entrypoint seeds `/server` once, so the server keeps loading the
+  old files from the volume. Copy the component in from the new image
+  (`scripts/refresh-yapb.sh <name>` for YaPB, then restart the server) or
+  reset the volume.
 - **CS 1.6 itself** does not meaningfully update — it is pinned to the
   `steam_legacy` branch and installed once at build time.
 
