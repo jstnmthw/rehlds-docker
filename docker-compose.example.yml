@@ -22,7 +22,9 @@
 #
 #  To run MULTIPLE servers from this one image, copy docker-compose.fleet.example.yml
 #  to docker-compose.yml instead — one service, one env file and one
-#  ./serverdata/<name> volume per server.
+#  ./serverdata/<name> volume per server. For several GAMES (Counter-Strike,
+#  Team Fortress Classic, Day of Defeat) on a bridge network, see
+#  docker-compose.bridge.example.yml.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -33,7 +35,7 @@
 #  csserver service below.
 # -----------------------------------------------------------------------------
 x-csserver: &csserver
-  image: rehlds-csserver:local
+  image: rehlds-cstrike:local
 
   # Host networking is the reliable choice for GoldSrc master-server
   # registration. The server binds these UDP ports directly on the host:
@@ -73,7 +75,7 @@ x-csserver: &csserver
   # (the image also defines this; restated here for visibility). It keys off the
   # container's SERVER_PORT, so each server probes its own port.
   healthcheck:
-    test: ["CMD", "/opt/cs16/healthcheck.sh"]
+    test: ["CMD", "/opt/hlds/healthcheck.sh"]
     interval: 60s
     timeout: 15s
     start_period: 90s
@@ -85,11 +87,14 @@ services:
 
     # The single `build:` lives here, not in the anchor, so additional servers
     # reuse the built image instead of racing to rebuild it. `docker compose
-    # build` tags the result rehlds-csserver:local (the anchor's image:).
+    # build` tags the result rehlds-cstrike:local (the anchor's image:).
     build:
       context: .
       dockerfile: Dockerfile
       args:
+        # Which game to build: cstrike (this template), tfc or dod. Change the
+        # anchor's image: tag to rehlds-<game>:local to match.
+        GAME: "cstrike"
         # HLDS SteamCMD branch — keep steam_legacy (required for ReHLDS).
         STEAM_BRANCH: "steam_legacy"
         # Flip to "false" only if GitHub is unreachable at build time;

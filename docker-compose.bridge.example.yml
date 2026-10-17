@@ -1,0 +1,175 @@
+# =============================================================================
+#  ReHLDS GoldSrc servers  —  bridge-network example (five servers, three games)
+# =============================================================================
+#  One compose project running every game server on this host from the image
+#  family this repo builds (rehlds-cstrike / rehlds-tfc / rehlds-dod, one image
+#  per game). Each server is three things: a service block below, its own env
+#  file (<name>.env) and its own ./serverdata/<name> volume. The compose file
+#  holds TOPOLOGY only — no ${...} interpolation; every runtime value comes from
+#  the env files.
+#
+#  Unlike the host-network templates, the containers sit on a user-defined
+#  bridge network and publish ONE UDP port each (their SERVER_PORT), so each
+#  server is a plain port-forward target and no two containers share a network
+#  namespace (the VAC/Steam port question of host networking does not arise).
+#  The published host port MUST equal the SERVER_PORT in that server's env file:
+#  the engine registers whatever port it binds, so host and container port stay
+#  the same number.
+#
+#  ---------------------------------------------------------------------------
+#  Usage
+#  ---------------------------------------------------------------------------
+#  1. The network is external, created once:
+#         docker network create gameservers
+#  2. Build the three images (each `build:` lives on one service, the others
+#     of that game reuse it):
+#         cp docker-compose.bridge.example.yml docker-compose.yml
+#         docker compose build                     # cstrike, tfc, dod
+#  3. One env file per server from the templates; set SERVER_NAME,
+#     RCON_PASSWORD, OWNER, and keep SERVER_PORT equal to the published port:
+#         cp cstrike-01.env.example cstrike-01.env  (… -02, -03)
+#         cp tfc-01.env.example tfc-01.env
+#         cp dod-01.env.example dod-01.env
+#  4. The volumes must exist and be owned by uid 1000 before the first start
+#     (the containers never run as root):
+#         mkdir -p serverdata/{cstrike-01,cstrike-02,cstrike-03,tfc-01,dod-01}
+#  5. One server at a time, while it is empty:
+#         docker compose up -d dod-01 && docker compose logs -f dod-01
+#
+#  Per-server admin addresses the service by name:
+#         docker compose logs -f tfc-01
+#         docker compose exec tfc-01 rcon "meta list"
+#
+#  Bot tuning is per-server, in the volume, never in the env file:
+#    cstrike  <vol>/cstrike/addons/yapb/conf/yapb.cfg          (yb_quota …)
+#    tfc      <vol>/tfc/addons/foxbot/tfc/foxbot.cfg           (max_bots …)
+#    dod      <vol>/dod/new_bot/maps/default_bot.cfg           (target_players …)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+#  Shared service skeleton — the same shape as the other templates' anchor, on
+#  a bridge network instead of the host's. Topology only, no ${...}.
+# -----------------------------------------------------------------------------
+x-hlds: &hlds
+  restart: unless-stopped
+  init: true                  # reap zombies (HLDS is the main process)
+  stop_grace_period: 30s
+
+  networks:
+    - gameservers
+
+  # No root process at all: started as the image's "steam" user (uid 1000),
+  # the entrypoint skips its chown/gosu step and runs HLDS as that user
+  # directly. The ./serverdata/<name> volume must be owned by uid 1000. No
+  # capability is needed: nothing binds below 1024 and nothing changes
+  # ownership. no-new-privileges blocks setuid escalation.
+  user: "1000:1000"
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+  # Cap each server's stdout log (HLDS console → Docker's json-file driver),
+  # otherwise UNBOUNDED. 10 MB × 3 files = 30 MB per server. The in-volume log
+  # files are bounded separately by LOG_RETENTION_DAYS in each env file.
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+  # A2S-query healthcheck inside the container; keys off SERVER_PORT, so each
+  # server probes its own port.
+  healthcheck:
+    test: ["CMD", "/opt/hlds/healthcheck.sh"]
+    interval: 60s
+    timeout: 15s
+    start_period: 90s
+    retries: 3
+
+networks:
+  gameservers:
+    external: true
+
+services:
+  # --- Counter-Strike 1.6 ----------------------------------------------------
+  cstrike-01:
+    <<: *hlds
+    image: rehlds-cstrike:local
+    build:                               # the one cstrike build; -02/-03 reuse the image
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GAME: "cstrike"
+        STEAM_BRANCH: "steam_legacy"     # required for ReHLDS
+        GPG_VERIFY: "true"               # "false" only if GitHub is unreachable
+    container_name: cstrike-01
+    env_file:
+      - cstrike-01.env                   # SERVER_PORT 27016 / CLIENT_PORT 27006
+    ports:
+      - "27016:27016/udp"
+    volumes:
+      - ./serverdata/cstrike-01:/server
+
+  cstrike-02:
+    <<: *hlds
+    image: rehlds-cstrike:local
+    container_name: cstrike-02
+    env_file:
+      - cstrike-02.env                   # SERVER_PORT 27017 / CLIENT_PORT 27007
+    ports:
+      - "27017:27017/udp"
+    volumes:
+      - ./serverdata/cstrike-02:/server
+
+  cstrike-03:
+    <<: *hlds
+    image: rehlds-cstrike:local
+    container_name: cstrike-03
+    env_file:
+      - cstrike-03.env                   # SERVER_PORT 27018 / CLIENT_PORT 27008
+    ports:
+      - "27018:27018/udp"
+    volumes:
+      - ./serverdata/cstrike-03:/server
+
+  # --- Team Fortress Classic -------------------------------------------------
+  tfc-01:
+    <<: *hlds
+    image: rehlds-tfc:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GAME: "tfc"
+        STEAM_BRANCH: "steam_legacy"
+        GPG_VERIFY: "true"
+    container_name: tfc-01
+    env_file:
+      - tfc-01.env                       # SERVER_PORT 27015 / CLIENT_PORT 27005
+    ports:
+      - "27015:27015/udp"
+    volumes:
+      - ./serverdata/tfc-01:/server
+
+  # --- Day of Defeat ---------------------------------------------------------
+  dod-01:
+    <<: *hlds
+    image: rehlds-dod:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GAME: "dod"
+        STEAM_BRANCH: "steam_legacy"
+        GPG_VERIFY: "true"
+    container_name: dod-01
+    env_file:
+      - dod-01.env                       # SERVER_PORT 27019 / CLIENT_PORT 27009
+    ports:
+      - "27019:27019/udp"
+    volumes:
+      - ./serverdata/dod-01:/server
+
+  # Add a server by copying a block of its game: new name, env file,
+  # ./serverdata/<name> volume, and a fresh port (published == SERVER_PORT).
