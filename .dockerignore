@@ -1,9 +1,15 @@
 # Keep the build context small and free of secrets / runtime state.
-# Only Dockerfile + scripts/ + config/ are needed to build the image.
+# The build needs Dockerfile + scripts/ + config/ + profiles/ + vendor/.
 
 # Secrets and local config
 .env
 .env.*
+*.env
+*.env.example
+
+# Compose files are not part of the image (docker-compose.yml is the operator's)
+docker-compose*.yml
+fastdl/
 
 # Runtime data (serverfiles, logs, runtime state) — can be many GB
 serverdata/
@@ -18,6 +24,7 @@ data/
 # Documentation — not needed inside the image
 *.md
 START.md
+docs/
 
 # Editor / OS noise
 .vscode/

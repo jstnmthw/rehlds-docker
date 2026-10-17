@@ -2,18 +2,21 @@
 """Rewrite a fleet member's live yapb.cfg from the new image's stock file, keeping
 the operator's tuned values.
 
-    scripts/migrate-yapb-cfg.py <server-name> [--image rehlds-csserver:local] [--dry-run]
+    scripts/migrate-yapb-cfg.py <server-name> [--image rehlds-cstrike:local] [--dry-run]
 
 Run from the compose directory while the server's OLD container is still
-running: its baked stock cfg (/opt/cs16/serverfiles-base/...) is the baseline
+running: its baked stock cfg (/opt/hlds/serverfiles-base/...) is the baseline
 that defines "tuned" (any cvar whose live value differs from it). The new stock
 cfg is read from the freshly built image. Cvars that no longer exist upstream
 are reported and dropped; new cvars take their stock values. The live file is
-copied to yapb.cfg.bak-<date> first. Then: docker compose up -d <server-name>.
+copied to yapb.cfg.bak-<date> first. Then: docker compose up -d <server-name>
+— the entrypoint refreshes the rest of the YaPB tree (yapb.so, stock data) from
+the new image itself; yapb.cfg is operator-owned and is the one file it leaves
+alone, which is why this script exists. Counter-Strike images only.
 """
 import argparse, datetime, pathlib, re, shutil, subprocess, sys
 
-CFG = "/opt/cs16/serverfiles-base/cstrike/addons/yapb/conf/yapb.cfg"
+CFG = "/opt/hlds/serverfiles-base/cstrike/addons/yapb/conf/yapb.cfg"
 LINE = re.compile(r'^(\s*)(yb_[a-z0-9_]+)(\s+)"([^"]*)"(.*)$')
 
 
@@ -28,7 +31,7 @@ def run(*cmd):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("name")
-    ap.add_argument("--image", default="rehlds-csserver:local")
+    ap.add_argument("--image", default="rehlds-cstrike:local")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
 
