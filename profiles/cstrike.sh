@@ -20,6 +20,10 @@ GAME_MOD=cstrike                       # SteamCMD mod name == game directory == 
 GAME_BOT="YaPB"                        # the one bot this game ships, behind BOTS_ENABLED
 GAME_LIBRARY=cstrike/dlls/cs.so        # the game library Metamod loads (ReGameDLL's cs.so here)
 GAME_BOT_LIBRARY=cstrike/addons/yapb/bin/yapb.so
+# Only for a bot that is not a Metamod plugin: the HLDS start parameters that
+# load it, added by the entrypoint while BOTS_ENABLED=true (dod: Marine Bot).
+# YaPB is a plugin (the @bot@ line of config/cstrike/plugins.ini). Optional.
+GAME_BOT_START_PARAMS=""
 
 # Entrypoint defaults for the env-driven start parameters.
 GAME_DEFAULT_MAP=de_dust2

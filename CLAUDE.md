@@ -9,7 +9,7 @@ A Docker image **family** for GoldSrc dedicated servers running on the
 game — `rehlds-cstrike:local` (Counter-Strike 1.6), `rehlds-tfc:local` (Team
 Fortress Classic) and `rehlds-dod:local` (Day of Defeat). Every image carries
 ReHLDS, Metamod-R, AMX Mod X (base + the game's add-on), optional Reunion, and
-**one fixed bot per game** (YaPB / FoxBot / new_bot) behind the `BOTS_ENABLED`
+**one fixed bot per game** (YaPB / FoxBot / Marine Bot) behind the `BOTS_ENABLED`
 gate; Counter-Strike additionally gets ReGameDLL_CS and ReAPI. ReHLDS replaces
 the unmaintained stock GoldSrc HLDS engine: it is actively maintained,
 substantially faster, and adds engine-level flood-rate limiting that stock HLDS
@@ -93,6 +93,7 @@ assignments and `profile_*` functions, sourced by `build-server.sh` (build) and
 |---|---|
 | `GAME_TITLE`, `GAME_MOD`, `GAME_BOT` | banner title; SteamCMD mod name = game directory = `hlds -game`; the bot's name |
 | `GAME_LIBRARY`, `GAME_BOT_LIBRARY` | the game library and the bot plugin (paths from the server root), checked by the build's loader trace |
+| `GAME_BOT_START_PARAMS` | optional: HLDS start parameters that load a bot which is not a Metamod plugin (dod: `+localinfo mm_gamedll marinebot/marinebot.so`); the entrypoint adds them while `BOTS_ENABLED=true`, apart from `EXTRA_START_PARAMS` |
 | `GAME_DEFAULT_MAP`, `GAME_DEFAULT_MAXPLAYERS`, `GAME_DEFAULT_START_PARAMS` | entrypoint defaults for `DEFAULT_MAP`, `MAX_PLAYERS`, `EXTRA_START_PARAMS` |
 | `GAME_SENTINELS`, `GAME_REQUIRED` | depot files the SteamCMD loop waits for; files that must exist after assembly |
 | `GAME_AMXX_ADDON`, `GAME_AMXX_MODULES`, `GAME_AMXX_PLUGINS` | which `amxmodx-…-<addon>-linux.tar.gz` to apply; modules appended to `modules.ini`; stock plugins uncommented in AMXX `plugins.ini` |
@@ -104,8 +105,8 @@ assignments and `profile_*` functions, sourced by `build-server.sh` (build) and
 | Game library | `cstrike/dlls/cs.so` **replaced by ReGameDLL_CS** | Valve's `tfc/dlls/tfc.so` | Valve's `dod/dlls/dod.so` |
 | Extra components | ReGameDLL_CS, ReAPI | — | — |
 | AMXX add-on → modules → plugins | `cstrike` → `cstrike`, `reapi` → (stock) | `tfc` → `tfcx` → `stats`, `statssounds`, `stats_logging` | `dod` → `dodx`, `dodfun` → same three |
-| Bot (Metamod plugin line) | YaPB `addons/yapb/bin/yapb.so` | FoxBot `addons/foxbot/foxbot.so` | new_bot `new_bot/new_bot_mm.so` (in the gamedir, not `addons/`) + Sturmbot waypoint pack under `dod/sturmbot/waypoints/` |
-| Bot tuning file(s) (volume, operator's) | `addons/yapb/conf/yapb.cfg` | `addons/foxbot/tfc/foxbot.cfg` (`max_bots`, stock 10), `default.cfg`, `configs/` | `new_bot/new_bot.cfg`, `new_bot/maps/default_bot.cfg` (`target_players 12`) |
+| Bot (how it loads) | YaPB `addons/yapb/bin/yapb.so` (Metamod plugin line) | FoxBot `addons/foxbot/foxbot.so` (Metamod plugin line) | Marine Bot `marinebot/marinebot.so`, loaded as the game library by `+localinfo mm_gamedll` (`GAME_BOT_START_PARAMS`), + Martee's waypoints in `marinebot/defaultwpts/` |
+| Bot tuning file(s) (volume, operator's) | `addons/yapb/conf/yapb.cfg` | `addons/foxbot/tfc/foxbot.cfg` (`max_bots`, stock 10), `default.cfg`, `configs/` | `marinebot/marine.cfg` (`max_bots`, stock 6, + `recruit` block), `marine_dog-tags.txt`, `mapcfgs/`, `customwpts/` |
 | Defaults: map / slots / start params | `de_dust2` / 16 / `-pingboost 1 +sys_ticrate 1000` | `well` / 32 / none | `dod_anzio` / 32 / none |
 
 Templates are per game too: `config/<game>/server.cfg` and
@@ -124,8 +125,9 @@ URL (ReHLDS, Metamod-R, AMX Mod X base + the three add-ons, Reunion, ReGameDLL,
 ReAPI) are downloaded at build time. **Everything without one is vendored**
 under `vendor/` and referenced from the `Dockerfile` by file name
 (`*_ARCHIVE`) and SHA256: YaPB (upstream's rolling `continuous` release deletes
-its previous assets on every push), FoxBot, new_bot (Google Drive) and the
-Sturmbot waypoint pack. `fetch()` in `build-server.sh` takes either an
+its previous assets on every push), FoxBot, Marine Bot (SourceForge, with its
+GPL source alongside, unused by the build) and Martee's waypoint pack for it.
+`fetch()` in `build-server.sh` takes either an
 `https://` URL or an absolute path under `/build/vendor` and verifies the digest
 the same way. `CHANGELOG.md` records the pinned set per game and each vendored
 archive's upstream URL and download date.
@@ -196,7 +198,7 @@ Config files fall into these categories — know which before editing:
 |---|---|---|
 | `config/<game>/server.cfg`, `config/<game>/plugins.ini`, `config/reunion.cfg` | **Templates** — copied to `/opt/hlds/templates/`, rendered every start | Edit the `config/` template. The live `<game>/` copy is overwritten. |
 | `cstrike/addons/yapb/conf/yapb.cfg` | **Vendored + build-patched** — ships inside the YaPB archive; `profiles/cstrike.sh` rewrites our perf-cvar *values* in place at build time; seeded into the volume on first run, never refreshed | For a baked perf default, edit the `yapb_set` lines in `profiles/cstrike.sh` and rebuild. For bot tuning (quota/difficulty), edit the live copy — never overwritten after seeding. |
-| `tfc/addons/foxbot/tfc/foxbot.cfg` (+ `default.cfg`, `configs/`), `dod/new_bot/new_bot.cfg` + `new_bot/maps/` | **Vendored, seeded** — stock bot tuning, untouched by the build | Edit the live copy for bot count / skill. Never overwritten. |
+| `tfc/addons/foxbot/tfc/foxbot.cfg` (+ `default.cfg`, `configs/`), `dod/marinebot/marine.cfg` + `marine_dog-tags.txt`, `mapcfgs/`, `customwpts/` | **Vendored, seeded** — stock bot tuning, untouched by the build | Edit the live copy for bot count / skill. Never overwritten. |
 | `<game>/addons/amxmodx/configs/*` (`amxx.cfg`, `modules.ini`, `plugins.ini`, …) | **Stock, seeded** — the build only enables the game's modules/plugins; seeded on first run, never refreshed | Edit the live copy to tune AMX Mod X. Not tracked; never overwritten. |
 | `<game>/server-custom.cfg` | **Operator escape hatch** — seeded empty by the entrypoint, `exec`'d last (`server.cfg` `exec`s it) | Operator's own server cvars. Never overwritten. |
 | `<game>/addons/amxmodx/configs/users.ini` | **Managed block** — vendored AMXX file; the entrypoint rewrites only an `OWNER`-marked block each start | Set `OWNER` in the env file for the owner admin. Add other admins by hand, outside the managed block (they persist). |
@@ -278,14 +280,24 @@ env-rendered.
 - **tfc / FoxBot.** Stock config, untouched by the build. Bot count is
   `max_bots` (stock 10) in `tfc/addons/foxbot/tfc/foxbot.cfg`; `default.cfg`
   is the fallback for maps without a per-map `configs/<map>_bot.cfg`.
-- **dod / new_bot.** Stock config, untouched by the build. Bot count is
-  `target_players` (ships 12, `balance teams on`) in
-  `dod/new_bot/maps/default_bot.cfg`; global behaviour in `dod/new_bot/new_bot.cfg`
-  (all commented at stock). new_bot must be listed in Metamod's `plugins.ini`,
-  never `config.ini` (its readme: that crashes). For maps it has no waypoint
-  for it falls back to `dod/sturmbot/waypoints/` (the vendored pack). Fallback
-  bot if new_bot misbehaves, documented in `profiles/dod.sh`, not shipped:
-  Marine Bot.
+- **dod / Marine Bot.** Stock config, untouched by the build. Marine Bot is
+  not a Metamod plugin: `liblist.gam` stays on Metamod, the entrypoint adds
+  `+localinfo mm_gamedll marinebot/marinebot.so` while `BOTS_ENABLED=true`, and
+  Marine Bot loads `dod/dlls/dod.so` behind it, so `meta list` shows only
+  AMX Mod X and `meta game` names `marinebot.so`. Bot count is `max_bots`
+  (stock 6) with the `recruit` block of bots added at start, in
+  `dod/marinebot/marine.cfg`; names in `marine_dog-tags.txt` (three sections,
+  each under 50 names, section tags never inside comments; no `..` in a name,
+  ReHLDS turns such a name into `unnamed`); per-map settings in `mapcfgs/`.
+  Marine Bot reads all of it at start-up, so a change takes a restart.
+  Waypoints: Martee's pack in `defaultwpts/` (image-owned, refreshed with the
+  stack); Marine Bot saves edited waypoints to the directory it loads from, so
+  the operator's own go in `customwpts/` (operator-owned). Known noise:
+  Metamod-R logs `user message id reused: msgid=76, oldname=…,
+  newname=ScoreInfoL` about ten times a minute, because Marine Bot registers
+  DoD's `ScoreInfoLong` as `ScoreInfoL` from a stack buffer
+  (`engine.cpp`, `pfnRegUserMsg`) and Metamod-R keeps the pointer; harmless.
+  new_bot 0.3.0, shipped until 2026-10-22, leaked memory at every map change.
 
 ## Gotchas
 
@@ -298,13 +310,14 @@ env-rendered.
   stock plugins in AMXX `plugins.ini`, and strips `.dll` / `.exe` files; the
   cstrike profile rewrites the YaPB perf-cvar values in `yapb.cfg`, the tfc
   profile drops FoxBot's HTML documentation and ignores the old Metamod the
-  FoxBot zip bundles. These are all build-time mutations of SteamCMD/archive
+  FoxBot zip bundles, the dod profile drops Marine Bot's HTML help and icons. These are all build-time mutations of SteamCMD/archive
   output, and they all end up in `STACK-MANIFEST`.
 - **The depot's bundled 32-bit `libstdc++.so.6` / `libgcc_s.so.1`** sit at the
   server root and `hlds_run` puts `.` first on `LD_LIBRARY_PATH`, so they
   shadow the system ones. Valve's `tfc.so` needs a newer `CXXABI` than that
   copy has, so the tfc profile deletes the pair (the base image's
-  `lib32stdc++6` takes over); cstrike and dod keep the depot as is.
+  `lib32stdc++6` takes over); the dod profile does the same for Marine Bot,
+  whose `marinebot.so` needs `CXXABI_1.3.9`. cstrike keeps the depot as is.
   `build-server.sh` runs the 32-bit loader in trace mode over every library
   Metamod will dlopen (`GAME_LIBRARY`, Metamod, AMXX + its enabled modules,
   Reunion, `GAME_BOT_LIBRARY`) and fails the build on `not found`.

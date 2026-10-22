@@ -15,6 +15,44 @@ and records the current pinned set and design.
 
 ### Changes
 
+- **2026-10-22 — DoD's bot is Marine Bot 0.97 Beta; new_bot is gone.**
+  new_bot 0.3.0 leaked resident memory at every map change on a live server
+  (75 to 128 MiB over 32 changes in sixteen hours, the step growing from
+  0.24 to 2.85 MiB per change on the second pass through the same 18 maps;
+  flat once the plugin was unloaded). Marine Bot, the fallback the dod profile
+  named, ran four days on the same server from a hand-built trial: 182 map
+  changes, resident memory 70.6 MiB on the first map and 70.4 MiB on the last,
+  although it kicks and re-adds its bots at every changelevel just as new_bot
+  did. The dod image now ships Marine Bot (`vendor/mb097-dod.zip`) with
+  Martee's waypoints for the official maps
+  (`vendor/martee_dod_waypoint_pack_v2.zip`) and the bot's GPL source
+  (`vendor/mb097b-dod-source.zip`, not used by the build). Details:
+  - **Loading.** Marine Bot is a game-library wrapper, not a Metamod plugin:
+    `liblist.gam` stays on Metamod and HLDS starts with `+localinfo mm_gamedll
+    marinebot/marinebot.so`. A new optional profile variable,
+    `GAME_BOT_START_PARAMS`, carries that parameter; the entrypoint adds it
+    while `BOTS_ENABLED=true`, separately from `EXTRA_START_PARAMS`, so setting
+    those never drops the bot. `config/dod/plugins.ini` has no `@bot@` line any
+    more. cstrike and tfc are unchanged (the variable is empty or unset).
+  - **Libraries.** `marinebot.so` needs `CXXABI_1.3.9`, which the depot's
+    bundled 32-bit `libstdc++.so.6` predates, so the dod profile drops the
+    bundled `libstdc++.so.6` / `libgcc_s.so.1` as the tfc profile does; the
+    loader check covers `marinebot.so` as the bot library.
+  - **Operator files.** `marinebot/marine.cfg` (`max_bots`, stock 6, and the
+    `recruit` block), `marine_dog-tags.txt`, `mapcfgs/` and `customwpts/` are
+    seeded once and never refreshed; `defaultwpts/` is image-owned like the
+    other bots' waypoints. Marine Bot reads its config and names at start-up.
+  - **Existing dod volumes** keep new_bot's files (the refresh never deletes);
+    they are unused. A volume seeded by the new_bot image gets Marine Bot's
+    stock `marine.cfg` (6 bots) on the first start of this image.
+  - **Known noise.** Metamod-R logs `user message id reused: msgid=76,
+    oldname=…, newname=ScoreInfoL` about ten times a minute: Marine Bot
+    registers DoD's `ScoreInfoLong` as `ScoreInfoL` from a stack buffer
+    (`engine.cpp`, `pfnRegUserMsg`), Metamod-R keeps the pointer, and later
+    registrations compare against garbage. The message id is right; only the
+    log line is affected. A bot name containing `..` comes out as `unnamed`
+    (ReHLDS), and Marine Bot then keeps that name across maps.
+
 - **2026-10-17 — Bans survive a restart (cstrike).** `config/cstrike/server.cfg`
   now `exec`s `listip.cfg` and `banned.cfg`, as the stock `server.cfg` it
   replaces did and as the new tfc / dod templates do. `amx_ban` / `amx_banip`
@@ -190,13 +228,17 @@ upstream URL is where the file came from, on the date given.
 |---|---|---|---|---|---|
 | `yapb-4.8.1311-linux.tar.xz` | **YaPB** 4.8.1311 (`continuous` build of 2026-10-14, master bffaa0b) | cstrike | `https://github.com/yapb/yapb/releases/download/continuous/yapb-4.8.1311-linux.tar.xz` (asset deleted by upstream's next push) | 2026-10-17 | `085653b21f9a395f2a443d35c65aa155a86618a3f67926dc3933ca527aa0aebb` |
 | `foxbot_0911.zip` | **FoxBot** 0.911 (GitHub release `v0.911` of 2024-12-23, APGRoboCop/foxbot) | tfc | `https://github.com/APGRoboCop/foxbot/releases/download/v0.911/foxbot_0911.zip` | 2026-10-17 | `eea631c7c1a1ca59af915c8f63cb6fbcd8cc4d7008f490b9a2c0ab175d5cb25a` |
-| `new_bot-0.3.0.zip` | **new_bot** 0.3.0 (Martee, 2026-09-09; closed source, HPB_bot-derived) | dod | Google Drive id `1t49e1IrVtuZmNTyvfkagJc75N-rrLrve` — `https://drive.google.com/uc?export=download&id=1t49e1IrVtuZmNTyvfkagJc75N-rrLrve` (saved under this name); project page `https://dayofdefeat.home.blog/new_bot/` | 2026-10-17 | `dcd5b3c9240ecca8e11d3a226e132a5c4480bf5eff9ff2acca3348d92d3922e9` |
-| `sturmbot_4_new_bot_waypoints-2026-10-04.zip` | **Sturmbot waypoint pack for new_bot** (INsane, sturmbot.org, assembled 2026-10-04; 743 waypoints) | dod | `https://downloads.sturmbot.org/new_bot/new_bot_tools_waypoints/sturmbot_4_new_bot_waypoints.zip` | 2026-10-17 | `8d4466b30a8eede273a3566cd40cbb7b4c068d7565b7c74f8a6984bd31a77c14` |
+| `mb097-dod.zip` | **Marine Bot** 0.97 Beta, DoD edition (`marinebot.so` of 2025-01-30; GPL; upstream name `mb097(DOD).zip`) | dod | `https://sourceforge.net/projects/marinebot/files/Marinebot/Marine%20Bot%200.97%20Beta/mb097%28DOD%29.zip/download` | 2026-10-18 | `783994f80543156eec4872ca67ee473c4c2df9665bac226177d6281d500cb497` |
+| `martee_dod_waypoint_pack_v2.zip` | **Martee's DoD waypoint pack for Marine Bot**, v2 (2025-12-30; a `.wpt` and a `.pth` for each official map, one custom map) | dod | `https://downloads.sturmbot.org/marine_bot/marine_bot_waypoint_packs/martee_dod_waypoint_pack_v2.zip` | 2026-10-18 | `8ac386ac42efdb0be36c1adefa46862ea2b6cdd4b4b0325c37f434f41f5ea71e` |
+| `mb097b-dod-source.zip` | **Marine Bot 0.97b DoD source** (GPL; upstream name `mb097b(DOD)_sc.zip`, uploaded 2026-01-03). Kept as the corresponding source of the shipped binary; not used by the build | dod | `https://downloads.sourceforge.net/project/marinebot/Marinebot%20Sourcecode/Marine%20Bot%200.97%20Sourcecode/mb097b%28DOD%29_sc.zip` | 2026-10-22 | `46ebdb3ff97684527031a39b500e545ee40357f5edc399d5cb9480d5ae6e903b` |
 
-Not shipped, documented as the DoD fallback in `profiles/dod.sh`: Marine Bot
-0.97 Beta DoD edition (2026-01-03, GPL,
-`https://sourceforge.net/projects/marinebot/files/Marinebot/Marine%20Bot%200.97%20Beta/mb097%28DOD%29.zip/download`,
-SHA256 `783994f80543156eec4872ca67ee473c4c2df9665bac226177d6281d500cb497`).
+Until 2026-10-22 the dod image shipped new_bot 0.3.0
+(`new_bot-0.3.0.zip`, SHA256
+`dcd5b3c9240ecca8e11d3a226e132a5c4480bf5eff9ff2acca3348d92d3922e9`) and the
+Sturmbot waypoint pack for it
+(`sturmbot_4_new_bot_waypoints-2026-10-04.zip`, SHA256
+`8d4466b30a8eede273a3566cd40cbb7b4c068d7565b7c74f8a6984bd31a77c14`); both are
+no longer referenced by the `Dockerfile`.
 
 ### Pinned set per image
 
@@ -206,7 +248,7 @@ SHA256 `783994f80543156eec4872ca67ee473c4c2df9665bac226177d6281d500cb497`).
 | ReHLDS / Metamod-R / Reunion | 3.14.0.857 / 1.3.0.149 / 0.2.0.25 | same | same |
 | AMX Mod X | 1.10.0.5476 base + cstrike | 1.10.0.5476 base + tfc | 1.10.0.5476 base + dod |
 | Game library | ReGameDLL_CS 5.28.0.756 (+ ReAPI 5.26.0.338) | Valve's `tfc.so` | Valve's `dod.so` |
-| Bot | YaPB 4.8.1311 | FoxBot 0.911 | new_bot 0.3.0 + Sturmbot waypoints 2026-10-04 |
+| Bot | YaPB 4.8.1311 | FoxBot 0.911 | Marine Bot 0.97b + Martee's waypoints v2 |
 
 The image's `/opt/hlds/VERSIONS` lists exactly this, plus a digest of the
 stack manifest.
@@ -232,9 +274,10 @@ stack manifest.
 - **FoxBot**: 0.911 (2024-12-23) is the latest release; a `v1.0-beta2`
   prototype exists upstream and is not used. The zip bundles an old Metamod
   (`addons/metamod/`) and HTML documentation, neither of which is shipped.
-- **new_bot**: releases every one to two months via Google Drive; Linux-native
-  since 0.2.0 (2026-05-10). Its readme requires the plugin in Metamod's
-  `plugins.ini`, never `config.ini`.
+- **Marine Bot**: 0.97 Beta (binary 2025-01-30, source uploaded 2026-01-03)
+  is the latest release on SourceForge; the project ships no waypoints for
+  DoD 1.3, hence Martee's pack. Loaded through Metamod's `mm_gamedll`
+  override, as its readme says for Linux dedicated servers.
 - **AMX Mod X add-ons**: the `tfc` and `dod` tarballs ship their own
   `configs/{core,cvars,maps,modules,plugins}.ini`, which overwrite the base
   ones when extracted after the base tarball — the same order the `cstrike`

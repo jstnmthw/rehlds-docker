@@ -179,7 +179,7 @@ render_plugins_ini() {
       *) echo "${line}" >> "${out}" ;;
     esac
   done < "${TEMPLATES}/plugins.ini"
-  log "rendered Metamod plugins.ini (bots=${BOTS_ENABLED:-true} [${GAME_BOT}] reunion=${REUNION_ENABLED:-false})"
+  log "rendered Metamod plugins.ini (bots=${BOTS_ENABLED:-true} [${GAME_BOT}${GAME_BOT_START_PARAMS:+, by start parameter}] reunion=${REUNION_ENABLED:-false})"
 }
 
 # Reunion config — only when Reunion is enabled.
@@ -320,6 +320,12 @@ CLIENTPORT="${CLIENT_PORT:-27005}"
 MAP="${DEFAULT_MAP:-${GAME_DEFAULT_MAP}}"
 MAXPLAYERS="${MAX_PLAYERS:-${GAME_DEFAULT_MAXPLAYERS}}"
 EXTRA="${EXTRA_START_PARAMS:-${GAME_DEFAULT_START_PARAMS}}"
+# A bot that is not a Metamod plugin is loaded by a start parameter instead of
+# the @bot@ line (Marine Bot for dod: +localinfo mm_gamedll ...). It follows
+# BOTS_ENABLED like the plugin line and is kept apart from EXTRA_START_PARAMS,
+# so setting those never drops the bot. Empty for games whose bot is a plugin.
+BOT_PARAMS=""
+[[ "${BOTS_ENABLED:-true}" == "true" ]] && BOT_PARAMS="${GAME_BOT_START_PARAMS:-}"
 
 log "starting HLDS — game ${GAME_MOD}, map ${MAP}, port ${PORT}, ${MAXPLAYERS} slots"
 echo
@@ -346,4 +352,5 @@ exec "${RUN_AS[@]}" ./hlds_run \
   +servercfgfile server.cfg \
   -maxplayers "${MAXPLAYERS}" \
   +localinfo mm_clientmeta yes \
+  ${BOT_PARAMS} \
   ${EXTRA}

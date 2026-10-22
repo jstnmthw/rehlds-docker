@@ -30,7 +30,7 @@ engine — and it is the reason this image exists:
 | Game library | **ReGameDLL_CS** replaces `cstrike/dlls/cs.so` | ✓ | Valve's `tfc.so` | Valve's `dod.so` |
 | Metamod | **Metamod-R** | ✓ | ✓ | ✓ |
 | Plugins | **AMX Mod X** base + the game's add-on | `cstrike` add-on, **ReAPI** | `tfc` add-on (`tfcx`, stats) | `dod` add-on (`dodx`, `dodfun`, stats) |
-| Bots | one per game, toggled by `BOTS_ENABLED` | **YaPB** | **FoxBot** (+597 stock waypoints) | **new_bot** (+ the Sturmbot waypoint pack) |
+| Bots | one per game, toggled by `BOTS_ENABLED` | **YaPB** | **FoxBot** (+597 stock waypoints) | **Marine Bot** (+ Martee's waypoint pack) |
 | Non-Steam | **Reunion** *(optional)*, toggled by `REUNION_ENABLED` | ✓ | ✓ | ✓ |
 
 Exact pinned versions, source URLs and checksums are in
@@ -143,15 +143,19 @@ whether the bot loads at all.
 - `server-custom.cfg` — **your** server escape hatch. Seeded empty, `exec`'d
   last (so it wins), never overwritten. Put any custom server cvars here.
 - **Bot tuning** — seeded from the image once, then yours, applied on the next
-  map change (YaPB) or map change / restart (the others):
+  map change (YaPB), map change or restart (FoxBot) or restart (Marine Bot):
   - cstrike: `addons/yapb/conf/yapb.cfg` — `yb_quota` / `yb_quota_mode` /
     `yb_difficulty` / `yb_autovacate` at YaPB's stock `9` / `normal` / `3` / `1`.
     Our performance defaults (`yb_think_fps` etc.) are baked into this file at
     build time.
   - tfc: `addons/foxbot/tfc/foxbot.cfg` — `max_bots` (stock 10), skill, chat;
     `default.cfg` is the fallback for maps without a `configs/<map>_bot.cfg`.
-  - dod: `new_bot/maps/default_bot.cfg` — `target_players` (ships 12,
-    `balance teams on`); global behaviour in `new_bot/new_bot.cfg`.
+  - dod: `marinebot/marine.cfg` — `max_bots` (stock 6) and the `recruit`
+    block of bots added at start; bot names in `marinebot/marine_dog-tags.txt`
+    (keep `..` out of a name: ReHLDS renames such a player `unnamed`); per-map
+    settings in `marinebot/mapcfgs/`, your own waypoints in
+    `marinebot/customwpts/`. Marine Bot reads these at start-up, so a change
+    takes a restart.
 - `addons/amxmodx/configs/users.ini` — the AMX Mod X admin list. Seeded from
   the image, then yours to edit. If `OWNER` is set, the container also rewrites
   a marked owner block in it on every start (full admin by SteamID); admins you
@@ -206,7 +210,7 @@ container-managed `OWNER` block, which is regenerated each start).
 - **Component versions** are pinned as `ARG`s in the `Dockerfile`. To upgrade
   a downloaded component (ReHLDS, Metamod-R, AMX Mod X, Reunion, ReGameDLL,
   ReAPI), bump its `*_VERSION` and `*_SHA256`. To upgrade a vendored one
-  (YaPB, FoxBot, new_bot, the waypoint pack), drop the new archive into
+  (YaPB, FoxBot, Marine Bot, its waypoint pack), drop the new archive into
   `vendor/` and bump `*_VERSION`, `*_ARCHIVE` and `*_SHA256`. Then rebuild the
   affected image(s) and recreate the servers one at a time while they are
   empty (`docker compose up -d <name>`).
@@ -226,7 +230,7 @@ container-managed `OWNER` block, which is regenerated each start).
 
 ```bash
 # the ReHLDS stack loaded:
-docker compose exec csserver rcon "meta list"        # -> Metamod-R: AMX Mod X + the bot (YaPB / FoxBot / new_bot)
+docker compose exec csserver rcon "meta list"        # -> Metamod-R: AMX Mod X + the bot plugin (YaPB / FoxBot); dod: "meta game" names marinebot.so
 docker compose exec csserver rcon "amxx version"
 
 # the server answers Steam queries:
@@ -358,5 +362,5 @@ config/
   reunion.cfg           Reunion config template (shared)
   rehlds-signing-key.asc  vendored ReHLDS GPG public key
 vendor/                 SHA256-pinned archives with no stable upstream URL:
-                        YaPB, FoxBot, new_bot, the Sturmbot waypoint pack
+                        YaPB, FoxBot, Marine Bot (+ its GPL source), its waypoint pack
 ```

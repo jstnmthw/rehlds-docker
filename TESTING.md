@@ -89,8 +89,8 @@ docker compose exec <svc> cat /server/VERSIONS       # == the banner
 **Purpose:** ReHLDS, Metamod-R, AMX Mod X, the game module(s) and the bot are live.
 
 ```bash
-docker compose logs <svc> | grep -iE 'ReHLDS|Metamod-r|AMX Mod X|ReGameDLL|yapb|foxbot|new_bot'
-docker compose exec <svc> rcon "meta list"       # Metamod-R: AMX Mod X + the bot, both RUN
+docker compose logs <svc> | grep -iE 'ReHLDS|Metamod-r|AMX Mod X|ReGameDLL|yapb|foxbot|marine_bot'
+docker compose exec <svc> rcon "meta list"       # Metamod-R: AMX Mod X + the bot plugin, both RUN (dod: AMX Mod X only)
 docker compose exec <svc> rcon "amxx modules"    # the game module(s), see section 10
 docker compose exec <svc> rcon "amxx version"
 ```
@@ -156,7 +156,9 @@ docker compose exec <svc> rcon "removeid STEAM_0:0:424242; writeid"   # clean up
 # default (BOTS_ENABLED=true): the bot is in the Metamod plugin list
 docker compose exec <svc> grep -v '^;' /server/<game>/addons/metamod/plugins.ini
 #   cstrike -> linux addons/yapb/bin/yapb.so      tfc -> linux addons/foxbot/foxbot.so
-#   dod     -> linux new_bot/new_bot_mm.so
+#   dod     -> no bot line: Marine Bot is loaded by a start parameter instead
+docker compose top <svc> | grep hlds_linux
+#   dod     -> ... +localinfo mm_gamedll marinebot/marinebot.so (absent when disabled)
 
 # disable: BOTS_ENABLED=false in the env file, then
 docker compose up -d <svc>
@@ -228,8 +230,8 @@ docker exec <container> find /server -type f \( -iname '*.dll' -o -iname '*.exe'
 ## 10. Per-game acceptance
 
 Run sections 2, 3, 6 and 9 for each game and check these specifics. Bots take
-the bot's own join delay (FoxBot `pause 5` + one bot every 3 s; new_bot and
-YaPB a few seconds) after the map loads.
+the bot's own join delay (FoxBot `pause 5` + one bot every 3 s; Marine Bot
+and YaPB a few seconds) after the map loads.
 
 ### 10a. Counter-Strike 1.6 (`rehlds-cstrike`)
 
@@ -261,19 +263,32 @@ YaPB a few seconds) after the map loads.
 
 ### 10c. Day of Defeat (`rehlds-dod`)
 
-- Banner: `Game dod (Day of Defeat)`, `new_bot 0.3.0 (vendored)`,
-  `Sturmbot wpts 2026-10-04`.
-- Console: `metamod version is compatible with new_bot`, `new_bot: plugin attaching`
-  (a `…/routes/dod_anzio.wpr1 doesn't exist` line is normal: route files are generated).
-- `rcon "meta list"`: `AMX Mod X` and `new_bot`, both `RUN`.
+- Banner: `Game dod (Day of Defeat)`, `Marine Bot 0.97b (vendored)`,
+  `MB waypoints v2 (vendored, Martee)`.
+- Entrypoint: `rendered Metamod plugins.ini (bots=true [Marine Bot, by start
+  parameter] …)`; `docker compose top <svc>` shows `+localinfo mm_gamedll
+  marinebot/marinebot.so` on the `hlds_linux` line, once.
+- Console: `MARINE_BOT INFO - loading Day of Defeat game library: dod/dlls/dod.so`
+  (after `loading MOD game library: dod/dlls/dod_i386.so` and `Default Day of
+  Defeat game library failed to load`, which is normal: the DoD 1.3 library
+  has no `_i386` name), then `loading bot names`, `loading waypoint file:
+  dod/marinebot/defaultwpts/dod_anzio.wpt`, `loading path file: …/dod_anzio.pth`
+  and `loading configuration file: dod/marinebot/marine.cfg`.
+- `rcon "meta list"`: `AMX Mod X` only, `RUN` (Marine Bot is the game
+  library, not a plugin); `rcon "meta game"` names `marinebot.so`.
 - `rcon "amxx modules"`: `dodx` and `dodfun` running.
-- `rcon "status"`: new_bot bots on `dod_anzio` (`target_players 12` from
-  `new_bot/maps/default_bot.cfg`).
-- `/server/dod/sturmbot/waypoints/` holds 743 `.wpt` files;
-  `/server/dod/new_bot/waypoints/` 121.
-- Defaults with an empty env: map `dod_anzio`, 32 slots, no extra start parameters.
-- Bot tuning: edit `target_players` in `/server/dod/new_bot/maps/default_bot.cfg`,
-  `rcon "changelevel dod_anzio"` — the new count applies.
+- Bots: stock `marine.cfg` adds bots from its `recruit` block up to
+  `max_bots 6`; they join within seconds of the map load, named from
+  `marine_dog-tags.txt` (no `unnamed`).
+- `/server/dod/marinebot/defaultwpts/` holds 22 `.wpt` files (and as many
+  `.pth`); no `libstdc++.so.6` or `libgcc_s.so.1` at the server root.
+- Known noise: Metamod-R's `[META] ERROR: user message id reused: msgid=76,
+  oldname=…, newname=ScoreInfoL`, about ten a minute (see CLAUDE.md, dod).
+- Defaults with an empty env: map `dod_anzio`, 32 slots, no extra start
+  parameters (the bot's own parameter is added separately).
+- Bot tuning: edit `max_bots` and the `recruit` block in
+  `/server/dod/marinebot/marine.cfg`, then restart the server
+  (`docker compose restart <svc>`): Marine Bot reads it at start-up.
 
 ---
 

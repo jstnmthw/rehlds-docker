@@ -43,7 +43,7 @@
 #  Bot tuning is per-server, in the volume, never in the env file:
 #    cstrike  <vol>/cstrike/addons/yapb/conf/yapb.cfg          (yb_quota …)
 #    tfc      <vol>/tfc/addons/foxbot/tfc/foxbot.cfg           (max_bots …)
-#    dod      <vol>/dod/new_bot/maps/default_bot.cfg           (target_players …)
+#    dod      <vol>/dod/marinebot/marine.cfg                   (max_bots, recruit …)
 # =============================================================================
 
 # -----------------------------------------------------------------------------
